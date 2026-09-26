@@ -1,0 +1,33 @@
+<h1>Products</h1>
+
+<h2>Create Product</h2>
+<form (ngSubmit)="create()">
+    <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
+    <label>Price <input type="number" name="price" step="0.01" min="0" [(ngModel)]="form.price" required></label>
+    <label>Available Quantity <input type="number" name="availableQuantity" min="0" [(ngModel)]="form.availableQuantity" required></label>
+    <button type="submit">Create Product</button>
+</form>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+<h2>All Products</h2>
+<button type="button" (click)="load()">Refresh</button>
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Available Quantity</th>
+    </tr>
+    </thead>
+    <tbody>
+        @for (p of products(); track p.id) {
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.price }}</td>
+                <td>{{ p.availableQuantity }}</td>
+            </tr>
+        }
+    </tbody>
+</table>

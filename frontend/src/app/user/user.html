@@ -1,0 +1,32 @@
+<h1>Users</h1>
+
+<h2>Create User</h2>
+<form (ngSubmit)="create()">
+    <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
+    <label>Email <input type="email" name="email" [(ngModel)]="form.email" required></label>
+    <button type="submit">Create User</button>
+</form>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+<h2>All Users</h2>
+<button type="button" (click)="load()">Refresh</button>
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Active</th>
+    </tr>
+    </thead>
+    <tbody>
+        @for (u of users(); track u.id) {
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.name }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.active }}</td>
+            </tr>
+        }
+    </tbody>
+</table>

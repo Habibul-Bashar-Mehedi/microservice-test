@@ -4,7 +4,11 @@ import com.example.productservice.entity.Product;
 import com.example.productservice.repository.ProductRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -13,7 +17,14 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     public Product create(Product product) {
-        return productRepository.save(product);
+        try {
+            return productRepository.save(product);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Product with name " + product.getName() + " already exists"
+            );
+        }
     }
 
     public List<Product> findAll() {
@@ -24,16 +35,24 @@ public class ProductService {
         return productRepository.findById(id).orElse(null);
     }
 
+    @Transactional
     public Product updateQuantity(Long id, Integer quantity) {
-        Product product = productRepository.findById(id).orElse(null);
+        Product product = productRepository.findByIdForUpdate(id).orElse(null);
 
         if (product == null) {
             return null;
         }
 
-        product.setAvailableQuantity(
-                product.getAvailableQuantity() - quantity
-        );
+        int remaining = product.getAvailableQuantity() - quantity;
+
+        if (remaining < 0) {
+            throw new InsufficientStockException(
+                    "Insufficient stock for product " + id
+                            + ": available " + product.getAvailableQuantity() + ", requested " + quantity
+            );
+        }
+
+        product.setAvailableQuantity(remaining);
         return productRepository.save(product);
     }
 }

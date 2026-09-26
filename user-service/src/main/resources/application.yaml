@@ -5,6 +5,12 @@ spring:
   application:
     name: user-service
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
   datasource:
     url: jdbc:postgresql://localhost:5432/user-service
     username: lemon
@@ -17,4 +23,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
 

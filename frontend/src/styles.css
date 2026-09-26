@@ -1,0 +1,43 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+nav {
+    margin-bottom: 20px;
+}
+
+label {
+    margin-right: 15px;
+}
+
+input {
+    margin-left: 5px;
+}
+
+button {
+    margin-left: 5px;
+}
+
+table {
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid #999;
+    padding: 6px 12px;
+    text-align: left;
+}
+
+th {
+    background: #eee;
+}
+
+.message {
+    font-weight: bold;
+}
