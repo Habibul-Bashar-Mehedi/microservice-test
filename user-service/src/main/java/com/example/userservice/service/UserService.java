@@ -3,6 +3,8 @@ package com.example.userservice.service;
 import com.example.userservice.entity.User;
 import com.example.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
+    @CacheEvict(value = {"users", "userById"}, allEntries = true)
     public User createUser(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new ResponseStatusException(
@@ -30,11 +33,13 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable("users")
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
     @Transactional(readOnly = true)
+    @Cacheable("userById")
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));

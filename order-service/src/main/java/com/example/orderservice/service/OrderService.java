@@ -7,6 +7,8 @@ import com.example.orderservice.entity.OrderStatus;
 import com.example.orderservice.repository.OrderRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +21,7 @@ public class OrderService {
     private final UserClient userClient;
     private final ProductClient productClient;
 
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public Order create(Order order) {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new ResponseStatusException(
@@ -55,6 +58,7 @@ public class OrderService {
                 .orElse(null);
     }
 
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public Order confirm(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
 
@@ -73,10 +77,12 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Cacheable("orders")
     public List<Order> findAll() {
         return orderRepository.findAll();
     }
 
+    @Cacheable("orderById")
     public Order findById(Long id) {
         return orderRepository.findById(id).orElse(null);
     }

@@ -11,6 +11,7 @@ import com.example.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -22,6 +23,7 @@ public class OrderEventConsumer {
     private final UserClient userClient;
 
     @RabbitListener(queues = RabbitConfig.ORDER_CREATED_QUEUE)
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public void onOrderCreated(OrderCreatedEvent event) {
         Order order = orderRepository.findById(event.orderId()).orElse(null);
 
@@ -38,6 +40,7 @@ public class OrderEventConsumer {
     }
 
     @RabbitListener(queues = RabbitConfig.STOCK_UPDATED_QUEUE)
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public void onStockUpdated(StockUpdatedEvent event) {
         Order order = orderRepository.findById(event.orderId()).orElse(null);
 
@@ -53,6 +56,7 @@ public class OrderEventConsumer {
     }
 
     @RabbitListener(queues = RabbitConfig.STOCK_FAILED_QUEUE)
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public void onStockUpdateFailed(StockUpdateFailedEvent event) {
         Order order = orderRepository.findById(event.orderId()).orElse(null);
 

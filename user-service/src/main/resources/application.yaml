@@ -5,6 +5,11 @@ spring:
   application:
     name: user-service
 
+  cache:
+    type: jcache
+    jcache:
+      config: classpath:ehcache.xml
+
   rabbitmq:
     host: localhost
     port: 5672
