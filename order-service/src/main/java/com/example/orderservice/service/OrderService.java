@@ -21,7 +21,7 @@ public class OrderService {
     private final UserClient userClient;
     private final ProductClient productClient;
 
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders"}, allEntries = true)
     public Order create(Order order) {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new ResponseStatusException(

@@ -19,7 +19,7 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
-    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    @CacheEvict(value = {"users"}, allEntries = true)
     public User createUser(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new ResponseStatusException(
@@ -55,7 +55,7 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    @CacheEvict(value = {"users"}, allEntries = true)
     public User register(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new ResponseStatusException(

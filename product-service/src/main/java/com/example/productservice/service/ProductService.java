@@ -18,7 +18,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
-    @CacheEvict(value = {"products", "productById"}, allEntries = true)
+    @CacheEvict(value = {"products"}, allEntries = true)
     public Product create(Product product) {
         try {
             return productRepository.save(product);

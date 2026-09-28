@@ -70,13 +70,4 @@ public class OrderController {
                 : ResponseEntity.accepted().body(confirmed);
     }
 
-    @GetMapping("/v2/orders")
-    public List<Order> findAllV2() {
-        return orderService.findAll();
     }
-
-    @GetMapping("/v2/orders/{id}")
-    public Order findByIdV2(@PathVariable Long id) {
-        return orderService.findById(id);
-    }
-}

@@ -79,7 +79,7 @@ export class OrderComponent implements OnInit {
     }
 
     load() {
-        this.http.get<Order[]>(this.base + '/orders').subscribe({
+        this.http.get<Order[]>(API.orderV1 + '/orders').subscribe({
             next: (data) => this.orders.set(data),
             error: (err) => this.fail(err)
         });

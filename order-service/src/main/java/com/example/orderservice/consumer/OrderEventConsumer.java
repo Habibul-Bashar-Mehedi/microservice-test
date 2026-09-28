@@ -1,6 +1,5 @@
 package com.example.orderservice.consumer;
 
-import com.example.orderservice.client.UserClient;
 import com.example.orderservice.config.RabbitConfig;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.OrderStatus;
@@ -20,22 +19,12 @@ import org.springframework.stereotype.Component;
 public class OrderEventConsumer {
 
     private final OrderRepository orderRepository;
-    private final UserClient userClient;
 
     @RabbitListener(queues = RabbitConfig.ORDER_CREATED_QUEUE)
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders"}, allEntries = true)
     public void onOrderCreated(OrderCreatedEvent event) {
-        Order order = orderRepository.findById(event.orderId()).orElse(null);
-
-        if (order == null) {
+        if (orderRepository.findById(event.orderId()).isEmpty()) {
             log.warn("OrderCreated event for unknown order {}", event.orderId());
-            return;
-        }
-
-        if (!userClient.isActive(event.userId())) {
-            order.setStatus(OrderStatus.REJECTED);
-            orderRepository.save(order);
-            log.warn("Order {} rejected: user {} is not active", event.orderId(), event.userId());
         }
     }
 

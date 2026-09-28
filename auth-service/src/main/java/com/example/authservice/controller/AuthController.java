@@ -1,8 +1,10 @@
 package com.example.authservice.controller;
 
 import com.example.authservice.service.AuthService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,13 +20,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody @jakarta.validation.Valid LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
         AuthService.LoginResult result = authService.login(request.email(), request.password());
         return ResponseEntity.ok(toResponse(result));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@RequestBody @jakarta.validation.Valid RegisterRequest request) {
+    public ResponseEntity<LoginResponse> register(@RequestBody @Valid RegisterRequest request) {
         AuthService.LoginResult result = authService.register(request.name(), request.email(), request.password());
         return ResponseEntity.ok(toResponse(result));
     }
@@ -41,13 +43,13 @@ public class AuthController {
 
     public record LoginRequest(
             @NotBlank @Email String email,
-            @NotBlank String password) {
+            @NotBlank @Size(min = 6, max = 100) String password) {
     }
 
     public record RegisterRequest(
             @NotBlank String name,
             @NotBlank @Email String email,
-            @NotBlank String password) {
+            @NotBlank @Size(min = 6, max = 100) String password) {
     }
 
     public record LoginResponse(
