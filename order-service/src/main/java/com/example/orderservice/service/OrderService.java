@@ -79,7 +79,7 @@ public class OrderService {
 
     @Cacheable("orders")
     public List<Order> findAll() {
-        return orderRepository.findAll();
+        return orderRepository.findAllByOrderByIdDesc();
     }
 
     @Cacheable("orderById")

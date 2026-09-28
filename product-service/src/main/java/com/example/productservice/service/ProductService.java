@@ -32,7 +32,7 @@ public class ProductService {
 
     @Cacheable("products")
     public List<Product> findAll() {
-        return productRepository.findAll();
+        return productRepository.findAllByOrderByIdDesc();
     }
 
     @Cacheable("productById")

@@ -71,7 +71,7 @@ public class AsyncOrderService {
 
     @Cacheable("orders")
     public List<Order> findAll() {
-        return orderRepository.findAll();
+        return orderRepository.findAllByOrderByIdDesc();
     }
 
     @Cacheable("orderById")

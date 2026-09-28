@@ -35,7 +35,7 @@ public class UserService {
     @Transactional(readOnly = true)
     @Cacheable("users")
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userRepository.findAllByOrderByIdDesc();
     }
 
     @Transactional(readOnly = true)
