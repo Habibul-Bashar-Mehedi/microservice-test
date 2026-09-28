@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,5 +34,24 @@ public class UserController {
     @GetMapping("/v1/users/{id}")
     public User getUserByIdV1(@PathVariable Long id) {
         return userService.getUserById(id);
+    }
+
+    @GetMapping("/v1/users/email/{email}")
+    public User getUserByEmailV1(@PathVariable String email) {
+        return userService.getUserByEmail(email);
+    }
+
+    @PostMapping("/v1/users/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public User registerV1(@Valid @RequestBody User user) {
+        return userService.register(user);
+    }
+
+    @PatchMapping("/v1/users/{id}/active")
+    public User setActiveV1(@PathVariable Long id, @RequestBody ActiveStatusRequest request) {
+        return userService.setActive(id, request.active());
+    }
+
+    public record ActiveStatusRequest(boolean active) {
     }
 }

@@ -26,3 +26,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: microservice-tests-super-secret-key-please-change-0123456789

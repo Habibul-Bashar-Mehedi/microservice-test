@@ -44,4 +44,40 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
+
+    @Transactional(readOnly = true)
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found with email: " + email
+                ));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    public User register(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "User with email " + user.getEmail() + " already exists"
+            );
+        }
+
+        user.setActive(false);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    public User setActive(Long id, boolean active) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found with id: " + id
+                ));
+
+        user.setActive(active);
+        return userRepository.save(user);
+    }
 }

@@ -50,6 +50,17 @@ export class UserComponent implements OnInit {
         });
     }
 
+    setActive(u: User, active: boolean) {
+        this.http.patch<User>(this.base + '/users/' + u.id + '/active', {active}).subscribe({
+            next: () => {
+                this.message.set(active ? 'User activated.' : 'User deactivated.');
+                this.isError.set(false);
+                this.load();
+            },
+            error: (err) => this.fail(err)
+        });
+    }
+
     private fail(err: any) {
         this.message.set(err?.error?.message || err?.message || 'Request failed');
         this.isError.set(true);

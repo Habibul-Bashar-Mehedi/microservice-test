@@ -17,6 +17,7 @@
         <th>Name</th>
         <th>Email</th>
         <th>Active</th>
+        <th>Action</th>
     </tr>
     </thead>
     <tbody>
@@ -26,6 +27,13 @@
                 <td>{{ u.name }}</td>
                 <td>{{ u.email }}</td>
                 <td>{{ u.active }}</td>
+                <td>
+                    @if (u.active) {
+                        <button type="button" (click)="setActive(u, false)">Deactivate</button>
+                    } @else {
+                        <button type="button" (click)="setActive(u, true)">Activate</button>
+                    }
+                </td>
             </tr>
         }
     </tbody>

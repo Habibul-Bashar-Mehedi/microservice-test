@@ -1,8 +1,17 @@
 <h1>{{ title }}</h1>
 <nav>
-    <a routerLink="/user">User</a> |
-    <a routerLink="/product">Product</a> |
-    <a routerLink="/order">Order</a>
+    @if (isAuthenticated) {
+        <a routerLink="/dashboard">Dashboard</a> |
+        @if (isAdmin) {
+            <a routerLink="/user">User</a> |
+            <a routerLink="/product">Product</a> |
+            <a routerLink="/order">Order</a> |
+        }
+        <button type="button" (click)="logout()">Logout</button>
+    } @else {
+        <a routerLink="/login">Login</a> |
+        <a routerLink="/register">Register</a>
+    }
 </nav>
 
 <router-outlet />

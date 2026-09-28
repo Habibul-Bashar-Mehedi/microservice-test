@@ -1,0 +1,60 @@
+<h1>Dashboard</h1>
+
+@if (user(); as u) {
+    <h2>Welcome, {{ u.name }}!</h2>
+    <p>
+        <strong>Email:</strong> {{ u.email }}<br>
+        <strong>Role:</strong> {{ u.role }}
+    </p>
+}
+
+@if (isAdmin) {
+    <h2>Sections</h2>
+    <ul>
+        <li><a routerLink="/user">Manage Users</a></li>
+        <li><a routerLink="/product">Manage Products</a></li>
+        <li><a routerLink="/order">Orders</a></li>
+    </ul>
+} @else {
+    <h2>Available Products</h2>
+    <button type="button" (click)="loadProducts()">Refresh</button>
+    <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Available Quantity</th>
+            <th>Order Quantity</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (p of products(); track p.id) {
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.availableQuantity }}</td>
+                    <td>
+                        <input
+                            type="number"
+                            min="1"
+                            [max]="p.availableQuantity"
+                            name="quantity-{{ p.id }}"
+                            [(ngModel)]="quantities[p.id]"
+                        >
+                    </td>
+                    <td>
+                        <button
+                            type="button"
+                            (click)="placeOrder(p)"
+                            [disabled]="placing()"
+                        >Order Now</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
