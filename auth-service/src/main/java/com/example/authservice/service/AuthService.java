@@ -22,34 +22,13 @@ public class AuthService {
     public LoginResult login(String email, String password) {
         AuthUser authUser = authUserRepository.findByEmail(email).orElse(null);
 
-        String defaultPassword = null;
-
         if (authUser == null) {
-            UserProfile profile = findExistingUser(email);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
 
-            if (profile == null) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
-            }
-
-            if (!profile.active()) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not activated yet. Please contact admin.");
-            }
-
-            defaultPassword = defaultPasswordService.defaultPasswordFor(profile.name());
-
-            authUser = AuthUser.builder()
-                    .name(profile.name())
-                    .email(profile.email())
-                    .password(defaultPasswordService.encode(defaultPassword))
-                    .role("USER")
-                    .build();
-            authUserRepository.save(authUser);
-        } else {
-            UserProfile profile = findExistingUser(email);
-
-            if (profile != null && !profile.active()) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not activated yet. Please contact admin.");
-            }
+        UserProfile profile = findExistingUser(email);
+        if (profile != null && !profile.active()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not activated yet. Please contact admin.");
         }
 
         if (!defaultPasswordService.passwordMatches(password, authUser.getPassword())) {
@@ -57,7 +36,7 @@ public class AuthService {
         }
 
         String token = jwtConfig.generateToken(authUser.getEmail(), authUser.getName(), authUser.getRole());
-        return new LoginResult(token, "Bearer", authUser.getEmail(), authUser.getName(), authUser.getRole(), defaultPassword);
+        return new LoginResult(token, "Bearer", authUser.getEmail(), authUser.getName(), authUser.getRole(), null);
     }
 
     public LoginResult register(String name, String email, String password) {

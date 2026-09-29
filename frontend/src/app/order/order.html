@@ -36,7 +36,11 @@
                 <td>{{ o.status }}</td>
                 <td>{{ o.productUpdated }}</td>
                 <td>
-                    <button (click)="confirm(o.id)" [disabled]="o.status === 'CONFIRMED' || o.status === 'CONFIRMING'">Confirm</button>
+                    @if (o.status === 'CANCELLED') {
+                        Cancelled
+                    } @else {
+                        <button (click)="confirm(o.id)" [disabled]="o.status === 'CONFIRMED' || o.status === 'CONFIRMING'">Confirm</button>
+                    }
                 </td>
             </tr>
         }

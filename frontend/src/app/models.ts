@@ -20,3 +20,15 @@ export interface Order {
     status: string;
     productUpdated: boolean;
 }
+
+export interface MessageLog {
+    id: number;
+    serviceName: string;
+    direction: 'PUBLISHED' | 'CONSUMED';
+    routingKey: string;
+    queue: string;
+    payload: string;
+    status: 'SUCCESS' | 'FAILED';
+    detail: string;
+    createdAt: string;
+}

@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../auth.service';
 import { API } from '../api-config';
+import { CartService } from '../cart.service';
 import { Order, Product } from '../models';
 
 interface OrderRequest {
@@ -12,6 +13,10 @@ interface OrderRequest {
     productId: number;
     quantity: number;
 }
+
+type ApiVersion = 'v1' | 'v2';
+
+const API_VERSION_KEY = 'order-api-version';
 
 @Component({
     selector: 'app-dashboard',
@@ -23,14 +28,37 @@ export class DashboardComponent implements OnInit {
 
     private auth = inject(AuthService);
     private http = inject(HttpClient);
+    private cart = inject(CartService);
 
     user = signal(this.auth.getUser());
 
     products = signal<Product[]>([]);
+    orders = signal<Order[]>([]);
     quantities: Record<number, number> = {};
     message = signal('');
     isError = signal(false);
     placing = signal(false);
+    checkingOut = signal(false);
+    cancelling = signal(false);
+    apiVersion = signal<ApiVersion>(this.loadSavedVersion());
+
+    get base() {
+        return this.apiVersion() === 'v1' ? API.orderV1 : API.orderV2;
+    }
+
+    setVersion(version: ApiVersion) {
+        this.apiVersion.set(version);
+        localStorage.setItem(API_VERSION_KEY, version);
+    }
+
+    private loadSavedVersion(): ApiVersion {
+        const saved = localStorage.getItem(API_VERSION_KEY);
+        return saved === 'v2' ? 'v2' : 'v1';
+    }
+
+    private userProfileId: number | null = null;
+
+    cartItems = this.cart.items;
 
     get isAdmin() {
         return this.user()?.role === 'ADMIN';
@@ -38,7 +66,18 @@ export class DashboardComponent implements OnInit {
 
     ngOnInit() {
         if (!this.isAdmin) {
-            this.loadProducts();
+            const email = this.user()?.email;
+            if (!email) {
+                return;
+            }
+            this.http.get<{id: number}>(API.userV1 + '/users/email/' + encodeURIComponent(email)).subscribe({
+                next: (profile) => {
+                    this.userProfileId = profile.id;
+                    this.loadProducts();
+                    this.loadOrders();
+                },
+                error: (err) => this.fail(err)
+            });
         }
     }
 
@@ -56,6 +95,19 @@ export class DashboardComponent implements OnInit {
         });
     }
 
+    addToCart(product: Product) {
+        const quantity = this.quantities[product.id];
+        if (!quantity || quantity < 1) {
+            this.message.set('Quantity must be at least 1.');
+            this.isError.set(true);
+            return;
+        }
+
+        this.cart.add(product, quantity);
+        this.message.set('Added to cart.');
+        this.isError.set(false);
+    }
+
     placeOrder(product: Product) {
         if (this.placing()) {
             return;
@@ -68,26 +120,99 @@ export class DashboardComponent implements OnInit {
             return;
         }
 
-        const email = this.user()?.email;
-        if (!email) {
+        if (this.userProfileId == null) {
             return;
         }
 
         this.placing.set(true);
-        this.http.get<{id: number}>(API.userV1 + '/users/email/' + encodeURIComponent(email)).subscribe({
-            next: (profile) => this.submitOrder(profile.id, product.id, quantity),
+        this.submitOrder(this.userProfileId, product.id, quantity);
+    }
+
+    loadOrders() {
+        if (this.userProfileId == null) {
+            return;
+        }
+        this.http.get<Order[]>(API.orderV1 + '/orders/user/' + this.userProfileId).subscribe({
+            next: (data) => this.orders.set(data),
+            error: (err) => this.fail(err)
+        });
+    }
+
+    cancelOrder(order: Order) {
+        if (this.cancelling() || this.userProfileId == null) {
+            return;
+        }
+
+        this.cancelling.set(true);
+        this.http.post<Order>(
+            API.orderV1 + '/orders/' + order.id + '/cancel?userId=' + this.userProfileId,
+            {}
+        ).subscribe({
+            next: () => {
+                this.message.set('Order ' + order.id + ' cancelled.');
+                this.isError.set(false);
+                this.cancelling.set(false);
+                this.loadOrders();
+            },
             error: (err) => {
-                this.placing.set(false);
+                this.cancelling.set(false);
                 this.fail(err);
             }
         });
     }
 
+    canCancel(status: string) {
+        return status === 'PENDING' || status === 'CONFIRMING';
+    }
+
+    productName(productId: number) {
+        return this.products().find(p => p.id === productId)?.name;
+    }
+
+    updateCartQuantity(productId: number, event: Event) {
+        const value = parseInt((event.target as HTMLInputElement).value, 10);
+        if (isNaN(value) || value < 1) {
+            return;
+        }
+        this.cart.setQuantity(productId, value);
+    }
+
+    removeFromCart(productId: number) {
+        this.cart.remove(productId);
+    }
+
+    cartTotal() {
+        return this.cart.total();
+    }
+
+    checkout() {
+        if (this.checkingOut()) {
+            return;
+        }
+
+        const items = this.cartItems();
+        if (items.length === 0) {
+            this.message.set('Your cart is empty.');
+            this.isError.set(true);
+            return;
+        }
+
+        if (this.userProfileId == null) {
+            return;
+        }
+
+        this.checkingOut.set(true);
+        this.submitCart(this.userProfileId);
+    }
+
     private submitOrder(userId: number, productId: number, quantity: number) {
+        const version = this.apiVersion();
         const body: OrderRequest = {userId, productId, quantity};
-        this.http.post<Order>(API.orderV1 + '/orders', body).subscribe({
+        this.http.post<Order>(this.base + '/orders', body).subscribe({
             next: () => {
-                this.message.set('Order placed successfully. The admin will confirm it.');
+                this.message.set(version === 'v2'
+                    ? 'Order placed (PENDING). User validation happens asynchronously.'
+                    : 'Order placed successfully. The admin will confirm it.');
                 this.isError.set(false);
                 this.placing.set(false);
             },
@@ -96,6 +221,32 @@ export class DashboardComponent implements OnInit {
                 this.fail(err);
             }
         });
+    }
+
+    private submitCart(userId: number) {
+        const items = this.cartItems();
+        let index = 0;
+
+        const placeNext = () => {
+            if (index >= items.length) {
+                this.message.set('Cart checked out. Orders placed successfully.');
+                this.isError.set(false);
+                this.checkingOut.set(false);
+                return;
+            }
+
+            const item = items[index++];
+            const body: OrderRequest = {userId, productId: item.productId, quantity: item.quantity};
+            this.http.post<Order>(this.base + '/orders', body).subscribe({
+                next: placeNext,
+                error: (err) => {
+                    this.checkingOut.set(false);
+                    this.fail(err);
+                }
+            });
+        };
+
+        placeNext();
     }
 
     private fail(err: any) {

@@ -34,6 +34,12 @@ export class AuthService {
     private http = inject(HttpClient);
     private router = inject(Router);
 
+    private logoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+    constructor() {
+        this.scheduleAutoLogout();
+    }
+
     login(credentials: LoginRequest): Observable<LoginResponse> {
         return this.http.post<LoginResponse>(API.authV1 + '/login', credentials);
     }
@@ -49,6 +55,7 @@ export class AuthService {
     setSession(res: LoginResponse) {
         localStorage.setItem(TOKEN_KEY, res.accessToken);
         localStorage.setItem(USER_KEY, JSON.stringify({email: res.email, name: res.name, role: res.role}));
+        this.scheduleAutoLogout();
     }
 
     getToken(): string | null {
@@ -61,10 +68,55 @@ export class AuthService {
     }
 
     isAuthenticated(): boolean {
-        return !!this.getToken();
+        if (!this.getToken()) {
+            return false;
+        }
+        const exp = this.getTokenExpiry();
+        return exp == null || Date.now() < exp;
+    }
+
+    private getTokenExpiry(): number | null {
+        const token = this.getToken();
+        if (!token) {
+            return null;
+        }
+        try {
+            const payload = token.split('.')[1];
+            if (!payload) {
+                return null;
+            }
+            const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+            const json = decodeURIComponent(
+                atob(padded).split('').map(c =>
+                    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                ).join('')
+            );
+            const exp = (JSON.parse(json) as {exp?: number}).exp;
+            return typeof exp === 'number' ? exp * 1000 : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private scheduleAutoLogout() {
+        if (this.logoutTimer != null) {
+            clearTimeout(this.logoutTimer);
+            this.logoutTimer = null;
+        }
+        const exp = this.getTokenExpiry();
+        if (exp == null) {
+            return;
+        }
+        const delay = Math.max(0, exp - Date.now());
+        this.logoutTimer = setTimeout(() => this.logout(), delay);
     }
 
     logout() {
+        if (this.logoutTimer != null) {
+            clearTimeout(this.logoutTimer);
+            this.logoutTimer = null;
+        }
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         this.router.navigate(['/login']);

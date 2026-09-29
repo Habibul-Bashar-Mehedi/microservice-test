@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -49,6 +50,20 @@ public class OrderController {
     @GetMapping("/v1/orders/{id}")
     public Order findByIdV1(@PathVariable Long id) {
         return orderService.findById(id);
+    }
+
+    @GetMapping("/v1/orders/user/{userId}")
+    public List<Order> findOrdersByUserV1(@PathVariable Long userId) {
+        return orderService.findByUserId(userId);
+    }
+
+    @PostMapping("/v1/orders/{id}/cancel")
+    public ResponseEntity<Order> cancelV1(@PathVariable Long id, @RequestParam Long userId) {
+        Order cancelled = orderService.cancel(id, userId);
+
+        return cancelled == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(cancelled);
     }
 
     @PostMapping("/v2/orders")

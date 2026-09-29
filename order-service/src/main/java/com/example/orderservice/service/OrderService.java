@@ -66,7 +66,9 @@ public class OrderService {
             return null;
         }
 
-        if (order.getStatus() == OrderStatus.CONFIRMED) {
+        if (order.getStatus() == OrderStatus.CONFIRMED
+                || order.getStatus() == OrderStatus.REJECTED
+                || order.getStatus() == OrderStatus.CANCELLED) {
             return order;
         }
 
@@ -75,6 +77,39 @@ public class OrderService {
         order.setProductUpdated(true);
 
         return orderRepository.save(order);
+    }
+
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    public Order cancel(Long id, Long userId) {
+        Order order = orderRepository.findById(id).orElse(null);
+
+        if (order == null) {
+            return null;
+        }
+
+        if (!order.getUserId().equals(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only cancel your own orders"
+            );
+        }
+
+        if (order.getStatus() == OrderStatus.CONFIRMED
+                || order.getStatus() == OrderStatus.REJECTED
+                || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Order " + id + " is " + order.getStatus() + " and cannot be cancelled"
+            );
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        return orderRepository.save(order);
+    }
+
+    @Cacheable("orders")
+    public List<Order> findByUserId(Long userId) {
+        return orderRepository.findAllByUserIdOrderByIdDesc(userId);
     }
 
     @Cacheable("orders")

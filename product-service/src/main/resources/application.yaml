@@ -27,5 +27,8 @@ spring:
       hibernate:
         format_sql: true
 
+log-service:
+  base-url: http://localhost:8084
+
 jwt:
   secret: microservice-tests-super-secret-key-please-change-0123456789

@@ -56,7 +56,9 @@ public class AsyncOrderService {
             return null;
         }
 
-        if (order.getStatus() == OrderStatus.CONFIRMED || order.getStatus() == OrderStatus.REJECTED) {
+        if (order.getStatus() == OrderStatus.CONFIRMED
+                || order.getStatus() == OrderStatus.REJECTED
+                || order.getStatus() == OrderStatus.CANCELLED) {
             return order;
         }
 

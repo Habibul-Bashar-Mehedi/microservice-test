@@ -5,3 +5,18 @@ ul {
 input[type="number"] {
     width: 80px;
 }
+
+.store {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.store-products {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.store-cart {
+    flex: 0 0 400px;
+}

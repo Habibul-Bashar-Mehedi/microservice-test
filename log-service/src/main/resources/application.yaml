@@ -1,0 +1,21 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: log-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/log-db
+    username: lemon
+    password: lemon
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+jwt:
+  secret: microservice-tests-super-secret-key-please-change-0123456789

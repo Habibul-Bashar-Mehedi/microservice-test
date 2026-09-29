@@ -8,6 +8,8 @@ import { Order } from '../models';
 
 type ApiVersion = 'v1' | 'v2';
 
+const API_VERSION_KEY = 'order-api-version';
+
 @Component({
     selector: 'app-order',
     imports: [FormsModule],
@@ -24,7 +26,7 @@ export class OrderComponent implements OnInit {
     message = signal('');
     isError = signal(false);
     creating = signal(false);
-    apiVersion = signal<ApiVersion>('v1');
+    apiVersion = signal<ApiVersion>(this.loadSavedVersion());
 
     get base() {
         return this.apiVersion() === 'v1' ? API.orderV1 : API.orderV2;
@@ -37,6 +39,7 @@ export class OrderComponent implements OnInit {
 
     setVersion(version: ApiVersion) {
         this.apiVersion.set(version);
+        localStorage.setItem(API_VERSION_KEY, version);
         this.load();
     }
 
@@ -83,6 +86,11 @@ export class OrderComponent implements OnInit {
             next: (data) => this.orders.set(data),
             error: (err) => this.fail(err)
         });
+    }
+
+    private loadSavedVersion(): ApiVersion {
+        const saved = localStorage.getItem(API_VERSION_KEY);
+        return saved === 'v2' ? 'v2' : 'v1';
     }
 
     private fail(err: any) {

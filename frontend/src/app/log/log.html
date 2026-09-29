@@ -1,0 +1,64 @@
+<h1>Message Logs</h1>
+<p>RabbitMQ messages and their log data, stored in <code>log-db</code>. Admin only.</p>
+
+<button type="button" (click)="load()">Refresh</button>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+<label>Service
+    <select [(ngModel)]="serviceFilter" name="service">
+        <option value="all">All</option>
+        <option value="auth-service">auth-service</option>
+        <option value="user-service">user-service</option>
+        <option value="order-service">order-service</option>
+        <option value="product-service">product-service</option>
+        <option value="log-service">log-service</option>
+    </select>
+</label>
+<label>Direction
+    <select [(ngModel)]="directionFilter" name="direction">
+        <option value="all">All</option>
+        <option value="PUBLISHED">Published</option>
+        <option value="CONSUMED">Consumed</option>
+    </select>
+</label>
+<label>Status
+    <select [(ngModel)]="statusFilter" name="status">
+        <option value="all">All</option>
+        <option value="SUCCESS">Success</option>
+        <option value="FAILED">Failed</option>
+    </select>
+</label>
+
+<h2>All Logs ({{ filteredLogs().length }})</h2>
+@if (filteredLogs().length === 0) {
+    <p>No log entries found.</p>
+} @else {
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Time</th>
+            <th>Service</th>
+            <th>Direction</th>
+            <th>Routing Key</th>
+            <th>Status</th>
+            <th>Detail</th>
+            <th>Payload (JSON)</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (l of filteredLogs(); track l.id) {
+                <tr>
+                    <td>{{ l.id }}</td>
+                    <td>{{ l.createdAt }}</td>
+                    <td>{{ l.serviceName }}</td>
+                    <td>{{ l.direction }}</td>
+                    <td>{{ l.routingKey }}</td>
+                    <td>{{ l.status }}</td>
+                    <td>{{ l.detail }}</td>
+                    <td><pre>{{ l.payload }}</pre></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

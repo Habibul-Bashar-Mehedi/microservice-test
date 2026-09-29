@@ -13,6 +13,9 @@ product-service:
     method: PUT
     path: /v1/products/{id}/quantity
 
+log-service:
+  base-url: http://localhost:8084
+
 spring:
   application:
     name: order-service
