@@ -1,39 +1,39 @@
 package com.example.orderservice.publisher;
 
 import com.example.orderservice.client.LogClient;
-import com.example.orderservice.config.RabbitConfig;
+import com.example.orderservice.config.KafkaConfig;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.event.OrderConfirmedEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class RabbitOrderEventPublisher implements OrderEventPublisher {
+public class KafkaOrderEventPublisher implements OrderEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final LogClient logClient;
 
     @Override
     public void publishCreated(Order order) {
         OrderCreatedEvent event = new OrderCreatedEvent(order.getId(), order.getUserId(), order.getProductId(), order.getQuantity());
-        publish(RabbitConfig.ORDER_CREATED_ROUTING_KEY, event);
+        publish(KafkaConfig.ORDER_CREATED_TOPIC, event);
     }
 
     @Override
     public void publishConfirmed(Order order) {
         OrderConfirmedEvent event = new OrderConfirmedEvent(order.getId(), order.getProductId(), order.getQuantity());
-        publish(RabbitConfig.ORDER_CONFIRMED_ROUTING_KEY, event);
+        publish(KafkaConfig.ORDER_CONFIRMED_TOPIC, event);
     }
 
-    private void publish(String routingKey, Object event) {
-        logClient.recordPublish(routingKey, event);
+    private void publish(String topic, Object event) {
+        logClient.recordPublish(topic, event);
         try {
-            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, routingKey, event);
+            kafkaTemplate.send(topic, event);
         } catch (Exception e) {
-            logClient.recordPublishFailed(routingKey, event, e.getMessage());
+            logClient.recordPublishFailed(topic, event, e.getMessage());
             throw e;
         }
     }

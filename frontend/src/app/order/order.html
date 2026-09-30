@@ -1,7 +1,7 @@
 <h1>Orders</h1>
 <h2>API Version</h2>
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v1'" (change)="setVersion('v1')"> v1 (sync)</label>
-<label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / RabbitMQ)</label>
+<label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / Kafka)</label>
 
 <h2>Create Order</h2>
 <form (ngSubmit)="create()">

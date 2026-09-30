@@ -120,7 +120,7 @@ flowchart TD
     TOK -->|"order-service to user/product<br/>(sync order create / confirm)"| FWD["forward caller's JWT<br/>RestClientConfig.forwardAuthorization"]:::act
     FWD --> B2["user/product-service sees<br/>original USER or ADMIN role"]:::ok
 
-    TOK -->|"RabbitMQ consumers"| RMQ["no HTTP token<br/>events carry order data only"]:::act
+    TOK -->|"Kafka consumers"| RMQ["no HTTP token<br/>events carry order data only"]:::act
     RMQ --> B3["consumers act on the data,<br/>no role required"]:::ok
 
     B1 --> Stop(["End"]):::term

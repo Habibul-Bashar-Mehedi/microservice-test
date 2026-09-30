@@ -1,4 +1,4 @@
-# Asynchronous Order Flow via RabbitMQ
+# Asynchronous Order Flow via Kafka
 
 ```mermaid
 flowchart TD
@@ -20,12 +20,11 @@ flowchart TD
         K["onStockUpdateFailed consumer<br/>if status not CONFIRMED:<br/>status = REJECTED<br/>productUpdated = false<br/>save order"]
     end
 
-    subgraph RMQ["RabbitMQ"]
-        X["ms-exchange<br/>topic exchange"]
-        Q1["queue: order-service.order-created<br/>binding: order.created"]
-        Q2["queue: product-service.order-confirmed<br/>binding: order.confirmed"]
-        Q3["queue: order-service.stock-updated<br/>binding: stock.updated"]
-        Q4["queue: order-service.stock-failed<br/>binding: stock.failed"]
+    subgraph KAFKA["Kafka"]
+        T1["topic: order.created"]
+        T2["topic: order.confirmed"]
+        T3["topic: stock.updated"]
+        T4["topic: stock.failed"]
     end
 
     subgraph UserS["User Service"]
@@ -36,19 +35,19 @@ flowchart TD
         L["onOrderConfirmed consumer"]
         M{"stockUpdate existsById(orderId)?<br/>dedupe check"}
         N{"updateQuantity:<br/>remaining = availableQuantity - quantity<br/>row lock findByIdForUpdate"}
-        O["publish StockUpdateFailedEvent<br/>routingKey: stock.failed"]
-        P["publish StockUpdateFailedEvent<br/>routingKey: stock.failed"]
-        R["save StockUpdate(orderId)<br/>publish StockUpdatedEvent after commit<br/>routingKey: stock.updated"]
+        O["publish StockUpdateFailedEvent<br/>topic: stock.failed"]
+        P["publish StockUpdateFailedEvent<br/>topic: stock.failed"]
+        R["save StockUpdate(orderId)<br/>publish StockUpdatedEvent after commit<br/>topic: stock.updated"]
     end
 
-    A --> C --> D -->|"OrderCreatedEvent"| X
-    X -->|"order.created"| Q1 --> E
+    A --> C --> D -->|"OrderCreatedEvent"| T1
+    T1 --> E
     E --> F
     F -->|"no"| G
     F -->|"yes"| H
 
-    B --> H --> I -->|"OrderConfirmedEvent"| X
-    X -->|"order.confirmed"| Q2 --> L
+    B --> H --> I -->|"OrderConfirmedEvent"| T2
+    T2 --> L
     L --> M
     M -->|"duplicate - ignore"| L
     M -->|"new order"| N
@@ -56,15 +55,14 @@ flowchart TD
     N -->|"product not found"| P
     N -->|"stock ok"| R
 
-    O -->|"stock.failed"| Q4
-    P -->|"stock.failed"| Q4
-    Q4 --> K
+    O -->|"stock.failed"| T4
+    P -->|"stock.failed"| T4
+    T4 --> K
 
-    R -->|"StockUpdatedEvent"| X
-    X -->|"stock.updated"| Q3 --> J
+    R -->|"StockUpdatedEvent"| T3
+    T3 --> J
 
-    style X fill:#f9d6c5
-    style Q1 fill:#d0e8f5
-    style Q2 fill:#d0e8f5
-    style Q3 fill:#d0e8f5
-    style Q4 fill:#d0e8f5
+    style T1 fill:#d0e8f5
+    style T2 fill:#d0e8f5
+    style T3 fill:#d0e8f5
+    style T4 fill:#d0e8f5
