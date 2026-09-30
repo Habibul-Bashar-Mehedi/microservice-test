@@ -24,4 +24,9 @@ public class MessageLogService {
     public List<MessageLog> findAll() {
         return messageLogRepository.findAllByOrderByCreatedAtDescIdDesc();
     }
+
+    @Transactional
+    public void deleteAll() {
+        messageLogRepository.deleteAll();
+    }
 }

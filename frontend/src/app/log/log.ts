@@ -20,6 +20,7 @@ export class LogComponent implements OnInit {
     logs = signal<MessageLog[]>([]);
     message = signal('');
     isError = signal(false);
+    clearing = signal(false);
     serviceFilter = signal('all');
     directionFilter = signal('all');
     statusFilter = signal('all');
@@ -48,6 +49,28 @@ export class LogComponent implements OnInit {
         this.http.get<MessageLog[]>(this.base + '/logs').subscribe({
             next: (data) => this.logs.set(data),
             error: (err) => this.fail(err)
+        });
+    }
+
+    clearAll() {
+        if (this.clearing()) {
+            return;
+        }
+        if (!confirm('Delete all log entries? This cannot be undone.')) {
+            return;
+        }
+        this.clearing.set(true);
+        this.http.delete(this.base + '/logs', {responseType: 'text'}).subscribe({
+            next: () => {
+                this.message.set('All log entries deleted.');
+                this.isError.set(false);
+                this.clearing.set(false);
+                this.load();
+            },
+            error: (err) => {
+                this.clearing.set(false);
+                this.fail(err);
+            }
         });
     }
 

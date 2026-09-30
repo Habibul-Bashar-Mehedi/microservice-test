@@ -2,6 +2,7 @@
 <p>RabbitMQ messages and their log data, stored in <code>log-db</code>. Admin only.</p>
 
 <button type="button" (click)="load()">Refresh</button>
+<button type="button" (click)="clearAll()" [disabled]="clearing()">Clear All Logs</button>
 <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
 <label>Service
