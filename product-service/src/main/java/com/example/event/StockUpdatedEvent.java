@@ -1,4 +1,4 @@
-package com.example.productservice.event;
+package com.example.event;
 
 public record StockUpdatedEvent(Long orderId) {
 }

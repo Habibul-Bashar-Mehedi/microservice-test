@@ -215,6 +215,7 @@ export class DashboardComponent implements OnInit {
                     : 'Order placed successfully. The admin will confirm it.');
                 this.isError.set(false);
                 this.placing.set(false);
+                this.loadOrders();
             },
             error: (err) => {
                 this.placing.set(false);
