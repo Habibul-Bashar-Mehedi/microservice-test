@@ -25,18 +25,28 @@ spring:
     jcache:
       config: classpath:ehcache.xml
 
-  kafka:
-    bootstrap-servers: localhost:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
-    consumer:
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      properties:
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
-        spring.json.trusted.packages: com.example.event
+  cloud:
+    stream:
+      default:
+        content-type: application/json
+      bindings:
+        orderCreated-out-0:
+          destination: order.created
+        orderConfirmed-out-0:
+          destination: order.confirmed
+        orderCreatedListener-in-0:
+          destination: order.created
+          group: order-service
+        stockUpdatedListener-in-0:
+          destination: stock.updated
+          group: order-service
+        stockUpdateFailedListener-in-0:
+          destination: stock.failed
+          group: order-service
+      kafka:
+        binder:
+          brokers: localhost:9092
+          auto-create-topics: true
 
   datasource:
     url: jdbc:postgresql://localhost:5432/order-service
