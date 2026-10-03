@@ -1,5 +1,6 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.dto.OrderResponse;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.service.AsyncOrderService;
 import com.example.orderservice.service.OrderService;
@@ -34,8 +35,8 @@ public class OrderController {
     }
 
     @GetMapping("/v1/orders")
-    public List<Order> findAllV1() {
-        return orderService.findAll();
+    public List<OrderResponse> findAllV1() {
+        return orderService.findAllWithUser();
     }
 
     @PostMapping("/v1/orders/{id}/confirm")

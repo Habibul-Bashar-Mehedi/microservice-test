@@ -47,6 +47,21 @@ public class RestClientUserClient implements UserClient {
         }
     }
 
+    @Override
+    public String getName(Long userId) {
+        HttpOperation operation = properties.getGetUser();
+
+        try {
+            UserProfile profile = userServiceRestClient.method(operation.getMethod())
+                    .uri(operation.getPath(), userId)
+                    .retrieve()
+                    .body(UserProfile.class);
+            return profile != null ? profile.name() : null;
+        } catch (RestClientResponseException e) {
+            return null;
+        }
+    }
+
     public record UserStatus(boolean active) {
     }
 

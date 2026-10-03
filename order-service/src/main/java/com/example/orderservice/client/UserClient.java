@@ -5,4 +5,6 @@ public interface UserClient {
     boolean isActive(Long userId);
 
     String getEmail(Long userId);
+
+    String getName(Long userId);
 }

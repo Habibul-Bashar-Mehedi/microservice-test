@@ -18,6 +18,8 @@
     <thead>
     <tr>
         <th>ID</th>
+        <th>User Name</th>
+        <th>User Email</th>
         <th>User ID</th>
         <th>Product ID</th>
         <th>Quantity</th>
@@ -30,6 +32,8 @@
         @for (o of orders(); track o.id) {
             <tr>
                 <td>{{ o.id }}</td>
+                <td>{{ o.userName ?? o.userId }}</td>
+                <td>{{ o.userEmail ?? '—' }}</td>
                 <td>{{ o.userId }}</td>
                 <td>{{ o.productId }}</td>
                 <td>{{ o.quantity }}</td>

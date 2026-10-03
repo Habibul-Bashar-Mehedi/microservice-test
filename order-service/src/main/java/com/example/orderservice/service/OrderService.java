@@ -2,6 +2,7 @@ package com.example.orderservice.service;
 
 import com.example.orderservice.client.ProductClient;
 import com.example.orderservice.client.UserClient;
+import com.example.orderservice.dto.OrderResponse;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.OrderStatus;
 import com.example.orderservice.repository.OrderRepository;
@@ -115,6 +116,15 @@ public class OrderService {
     @Cacheable("orders")
     public List<Order> findAll() {
         return orderRepository.findAllByOrderByIdDesc();
+    }
+
+    public List<OrderResponse> findAllWithUser() {
+        return orderRepository.findAllByOrderByIdDesc().stream()
+                .map(order -> OrderResponse.from(
+                        order,
+                        userClient.getName(order.getUserId()),
+                        userClient.getEmail(order.getUserId())))
+                .toList();
     }
 
     @Cacheable("orderById")

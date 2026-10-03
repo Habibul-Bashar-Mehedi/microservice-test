@@ -20,6 +20,8 @@ export interface Order {
     quantity: number;
     status: string;
     productUpdated: boolean;
+    userName?: string;
+    userEmail?: string;
 }
 
 export interface MessageLog {

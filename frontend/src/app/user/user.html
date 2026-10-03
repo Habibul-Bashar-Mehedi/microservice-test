@@ -16,7 +16,7 @@
         <th>ID</th>
         <th>Name</th>
         <th>Email</th>
-        <th>Active</th>
+        <th>Active Status</th>
         <th>Role</th>
         <th>Change Role</th>
         <th>Action</th>
@@ -28,7 +28,7 @@
                 <td>{{ u.id }}</td>
                 <td>{{ u.name }}</td>
                 <td>{{ u.email }}</td>
-                <td>{{ u.active }}</td>
+                <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
                 <td>{{ u.role }}</td>
                 <td>
                     @if (u.role === 'ADMIN') {
