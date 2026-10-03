@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -28,13 +28,15 @@ export class DashboardComponent implements OnInit {
 
     private auth = inject(AuthService);
     private http = inject(HttpClient);
-    private cart = inject(CartService);
+    cart = inject(CartService);
+    private destroyRef = inject(DestroyRef);
 
     user = signal(this.auth.getUser());
 
     products = signal<Product[]>([]);
     orders = signal<Order[]>([]);
     quantities: Record<number, number> = {};
+    searchQuery = signal('');
     message = signal('');
     isError = signal(false);
     placing = signal(false);
@@ -79,6 +81,30 @@ export class DashboardComponent implements OnInit {
                 error: (err) => this.fail(err)
             });
         }
+
+        const timer = setInterval(() => this.refresh(), 5000);
+        this.destroyRef.onDestroy(() => clearInterval(timer));
+    }
+
+    private refresh() {
+        if (this.userProfileId != null) {
+            if (!this.searchQuery().trim()) {
+                this.loadProducts();
+            }
+            this.loadOrders();
+        }
+    }
+
+    search() {
+        const q = this.searchQuery().trim();
+        if (!q) {
+            this.loadProducts();
+            return;
+        }
+        this.http.get<Product[]>(API.productV1 + '/products/search', {params: {q}}).subscribe({
+            next: (data) => this.products.set(data),
+            error: (err) => this.fail(err)
+        });
     }
 
     loadProducts() {
@@ -185,14 +211,22 @@ export class DashboardComponent implements OnInit {
         return this.cart.total();
     }
 
+    selectedCount(): number {
+        return this.cart.selectedItems().length;
+    }
+
+    selectedTotal(): number {
+        return this.cart.selectedTotal();
+    }
+
     checkout() {
         if (this.checkingOut()) {
             return;
         }
 
-        const items = this.cartItems();
+        const items = this.cart.selectedItems();
         if (items.length === 0) {
-            this.message.set('Your cart is empty.');
+            this.message.set('Select at least one item to checkout.');
             this.isError.set(true);
             return;
         }
@@ -202,7 +236,7 @@ export class DashboardComponent implements OnInit {
         }
 
         this.checkingOut.set(true);
-        this.submitCart(this.userProfileId);
+        this.submitCart(this.userProfileId, items);
     }
 
     private submitOrder(userId: number, productId: number, quantity: number) {
@@ -224,8 +258,7 @@ export class DashboardComponent implements OnInit {
         });
     }
 
-    private submitCart(userId: number) {
-        const items = this.cartItems();
+    private submitCart(userId: number, items: {productId: number; quantity: number}[]) {
         let index = 0;
 
         const placeNext = () => {
@@ -233,6 +266,8 @@ export class DashboardComponent implements OnInit {
                 this.message.set('Cart checked out. Orders placed successfully.');
                 this.isError.set(false);
                 this.checkingOut.set(false);
+                this.cart.clear();
+                this.loadOrders();
                 return;
             }
 

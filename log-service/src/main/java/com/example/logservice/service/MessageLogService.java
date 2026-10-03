@@ -13,11 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class MessageLogService {
 
     private final MessageLogRepository messageLogRepository;
+    private final MessageLogSearchService messageLogSearchService;
 
     @Transactional
     public MessageLog record(MessageLog entry) {
         entry.setCreatedAt(LocalDateTime.now());
-        return messageLogRepository.save(entry);
+        MessageLog saved = messageLogRepository.save(entry);
+        messageLogSearchService.index(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -28,5 +31,6 @@ public class MessageLogService {
     @Transactional
     public void deleteAll() {
         messageLogRepository.deleteAll();
+        messageLogSearchService.deleteAll();
     }
 }

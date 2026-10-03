@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
@@ -20,6 +20,7 @@ export class OrderComponent implements OnInit {
 
     private http = inject(HttpClient);
     private title = inject(Title);
+    private destroyRef = inject(DestroyRef);
 
     orders = signal<Order[]>([]);
     form = {userId: null as number | null, productId: null as number | null, quantity: null as number | null};
@@ -35,6 +36,8 @@ export class OrderComponent implements OnInit {
     ngOnInit() {
         this.title.setTitle('Orders - Microservice UI');
         this.load();
+        const timer = setInterval(() => this.load(), 5000);
+        this.destroyRef.onDestroy(() => clearInterval(timer));
     }
 
     setVersion(version: ApiVersion) {

@@ -1,6 +1,7 @@
 package com.example.orderservice.publisher;
 
 import com.example.orderservice.client.LogClient;
+import com.example.orderservice.client.UserClient;
 import com.example.orderservice.config.KafkaConfig;
 import com.example.orderservice.entity.Order;
 import com.example.event.OrderConfirmedEvent;
@@ -18,21 +19,24 @@ public class KafkaOrderEventPublisher implements OrderEventPublisher {
 
     private final StreamBridge streamBridge;
     private final LogClient logClient;
+    private final UserClient userClient;
 
     @Override
     public void publishCreated(Order order) {
-        OrderCreatedEvent event = new OrderCreatedEvent(order.getId(), order.getUserId(), order.getProductId(), order.getQuantity());
-        publish(ORDER_CREATED_BINDING, KafkaConfig.ORDER_CREATED_TOPIC, event);
+        String email = userClient.getEmail(order.getUserId());
+        OrderCreatedEvent event = new OrderCreatedEvent(order.getId(), order.getUserId(), order.getProductId(), order.getQuantity(), email);
+        publish(ORDER_CREATED_BINDING, KafkaConfig.ORDER_CREATED_TOPIC, event, email);
     }
 
     @Override
     public void publishConfirmed(Order order) {
-        OrderConfirmedEvent event = new OrderConfirmedEvent(order.getId(), order.getProductId(), order.getQuantity());
-        publish(ORDER_CONFIRMED_BINDING, KafkaConfig.ORDER_CONFIRMED_TOPIC, event);
+        String email = userClient.getEmail(order.getUserId());
+        OrderConfirmedEvent event = new OrderConfirmedEvent(order.getId(), order.getProductId(), order.getQuantity(), email);
+        publish(ORDER_CONFIRMED_BINDING, KafkaConfig.ORDER_CONFIRMED_TOPIC, event, email);
     }
 
-    private void publish(String binding, String topic, Object event) {
-        logClient.recordPublish(topic, event);
+    private void publish(String binding, String topic, Object event, String email) {
+        logClient.recordPublish(topic, event, email);
         try {
             boolean sent = streamBridge.send(binding, event);
             if (!sent) {

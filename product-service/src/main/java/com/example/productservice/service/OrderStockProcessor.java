@@ -38,7 +38,8 @@ public class OrderStockProcessor {
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         event,
-                        "malformed event: productId=" + event.productId() + ", quantity=" + event.quantity()
+                        "malformed event: productId=" + event.productId() + ", quantity=" + event.quantity(),
+                        event.email()
                 );
                 return;
             }
@@ -48,7 +49,8 @@ public class OrderStockProcessor {
                 logClient.recordConsume(
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
-                        event
+                        event,
+                        event.email()
                 );
                 return;
             }
@@ -56,7 +58,8 @@ public class OrderStockProcessor {
             logClient.recordConsume(
                     KafkaConfig.ORDER_CONFIRMED_TOPIC,
                     KafkaConfig.ORDER_CONFIRMED_TOPIC,
-                    event
+                    event,
+                    event.email()
             );
 
             Product updated;
@@ -68,12 +71,14 @@ public class OrderStockProcessor {
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         event,
-                        e.getMessage()
+                        e.getMessage(),
+                        event.email()
                 );
                 publishAfterCommit(
                         STOCK_FAILED_BINDING,
                         KafkaConfig.STOCK_FAILED_TOPIC,
-                        new StockUpdateFailedEvent(event.orderId())
+                        new StockUpdateFailedEvent(event.orderId(), event.email()),
+                        event.email()
                 );
                 return;
             }
@@ -85,12 +90,14 @@ public class OrderStockProcessor {
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         KafkaConfig.ORDER_CONFIRMED_TOPIC,
                         event,
-                        detail
+                        detail,
+                        event.email()
                 );
                 publishAfterCommit(
                         STOCK_FAILED_BINDING,
                         KafkaConfig.STOCK_FAILED_TOPIC,
-                        new StockUpdateFailedEvent(event.orderId())
+                        new StockUpdateFailedEvent(event.orderId(), event.email()),
+                        event.email()
                 );
                 return;
             }
@@ -99,7 +106,8 @@ public class OrderStockProcessor {
             publishAfterCommit(
                     STOCK_UPDATED_BINDING,
                     KafkaConfig.STOCK_UPDATED_TOPIC,
-                    new StockUpdatedEvent(event.orderId())
+                    new StockUpdatedEvent(event.orderId(), event.email()),
+                    event.email()
             );
             log.info("Stock updated for product {} and acknowledged order {}", event.productId(), event.orderId());
         } catch (Exception e) {
@@ -108,17 +116,18 @@ public class OrderStockProcessor {
                     KafkaConfig.ORDER_CONFIRMED_TOPIC,
                     KafkaConfig.ORDER_CONFIRMED_TOPIC,
                     event,
-                    e.getMessage()
+                    e.getMessage(),
+                    event.email()
             );
             throw e;
         }
     }
 
-    private void publishAfterCommit(String binding, String topic, Object payload) {
+    private void publishAfterCommit(String binding, String topic, Object payload, String email) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                logClient.recordPublish(topic, payload);
+                logClient.recordPublish(topic, payload, email);
                 try {
                     boolean sent = streamBridge.send(binding, payload);
                     if (!sent) {

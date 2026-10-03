@@ -1,4 +1,4 @@
 package com.example.event;
 
-public record StockUpdatedEvent(Long orderId) {
+public record StockUpdatedEvent(Long orderId, String email) {
 }

@@ -21,6 +21,7 @@ export class LogComponent implements OnInit {
     message = signal('');
     isError = signal(false);
     clearing = signal(false);
+    searchQuery = signal('');
     serviceFilter = signal('all');
     directionFilter = signal('all');
     statusFilter = signal('all');
@@ -47,6 +48,18 @@ export class LogComponent implements OnInit {
 
     load() {
         this.http.get<MessageLog[]>(this.base + '/logs').subscribe({
+            next: (data) => this.logs.set(data),
+            error: (err) => this.fail(err)
+        });
+    }
+
+    search() {
+        const q = this.searchQuery().trim();
+        if (!q) {
+            this.load();
+            return;
+        }
+        this.http.get<MessageLog[]>(this.base + '/logs/search', {params: {q}}).subscribe({
             next: (data) => this.logs.set(data),
             error: (err) => this.fail(err)
         });

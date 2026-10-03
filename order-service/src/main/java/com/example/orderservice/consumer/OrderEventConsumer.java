@@ -35,14 +35,16 @@ public class OrderEventConsumer {
                             KafkaConfig.ORDER_CREATED_TOPIC,
                             KafkaConfig.ORDER_CREATED_TOPIC,
                             event,
-                            "unknown order " + event.orderId()
+                            "unknown order " + event.orderId(),
+                            event.email()
                     );
                     return;
                 }
                 logClient.recordConsume(
                         KafkaConfig.ORDER_CREATED_TOPIC,
                         KafkaConfig.ORDER_CREATED_TOPIC,
-                        event
+                        event,
+                        event.email()
                 );
                 evict("orders");
             } catch (Exception e) {
@@ -51,7 +53,8 @@ public class OrderEventConsumer {
                         KafkaConfig.ORDER_CREATED_TOPIC,
                         KafkaConfig.ORDER_CREATED_TOPIC,
                         event,
-                        e.getMessage()
+                        e.getMessage(),
+                        event.email()
                 );
                 throw e;
             }
@@ -70,7 +73,8 @@ public class OrderEventConsumer {
                             KafkaConfig.STOCK_UPDATED_TOPIC,
                             KafkaConfig.STOCK_UPDATED_TOPIC,
                             event,
-                            "unknown order " + event.orderId()
+                            "unknown order " + event.orderId(),
+                            event.email()
                     );
                     return;
                 }
@@ -80,7 +84,8 @@ public class OrderEventConsumer {
                     logClient.recordConsume(
                             KafkaConfig.STOCK_UPDATED_TOPIC,
                             KafkaConfig.STOCK_UPDATED_TOPIC,
-                            event
+                            event,
+                            event.email()
                     );
                     return;
                 }
@@ -92,7 +97,8 @@ public class OrderEventConsumer {
                 logClient.recordConsume(
                         KafkaConfig.STOCK_UPDATED_TOPIC,
                         KafkaConfig.STOCK_UPDATED_TOPIC,
-                        event
+                        event,
+                        event.email()
                 );
                 evict("orders", "orderById");
             } catch (Exception e) {
@@ -101,7 +107,8 @@ public class OrderEventConsumer {
                         KafkaConfig.STOCK_UPDATED_TOPIC,
                         KafkaConfig.STOCK_UPDATED_TOPIC,
                         event,
-                        e.getMessage()
+                        e.getMessage(),
+                        event.email()
                 );
                 throw e;
             }
@@ -120,7 +127,8 @@ public class OrderEventConsumer {
                             KafkaConfig.STOCK_FAILED_TOPIC,
                             KafkaConfig.STOCK_FAILED_TOPIC,
                             event,
-                            "unknown order " + event.orderId()
+                            "unknown order " + event.orderId(),
+                            event.email()
                     );
                     return;
                 }
@@ -129,7 +137,8 @@ public class OrderEventConsumer {
                     logClient.recordConsume(
                             KafkaConfig.STOCK_FAILED_TOPIC,
                             KafkaConfig.STOCK_FAILED_TOPIC,
-                            event
+                            event,
+                            event.email()
                     );
                     return;
                 }
@@ -141,7 +150,8 @@ public class OrderEventConsumer {
                 logClient.recordConsume(
                         KafkaConfig.STOCK_FAILED_TOPIC,
                         KafkaConfig.STOCK_FAILED_TOPIC,
-                        event
+                        event,
+                        event.email()
                 );
                 evict("orders", "orderById");
             } catch (Exception e) {
@@ -150,7 +160,8 @@ public class OrderEventConsumer {
                         KafkaConfig.STOCK_FAILED_TOPIC,
                         KafkaConfig.STOCK_FAILED_TOPIC,
                         event,
-                        e.getMessage()
+                        e.getMessage(),
+                        event.email()
                 );
                 throw e;
             }

@@ -1,89 +1,137 @@
 package com.example.authservice.service;
 
-import com.example.authservice.config.DefaultPasswordService;
-import com.example.authservice.config.JwtConfig;
+import com.example.authservice.config.JwtService;
 import com.example.authservice.entity.AuthUser;
 import com.example.authservice.repository.AuthUserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final AuthUserRepository authUserRepository;
-    private final DefaultPasswordService defaultPasswordService;
-    private final JwtConfig jwtConfig;
+    private final JwtDecoder googleJwtDecoder;
+    private final JwtService jwtService;
+    private final String userServiceBaseUrl;
 
-    public LoginResult login(String email, String password) {
-        AuthUser authUser = authUserRepository.findByEmail(email).orElse(null);
-
-        if (authUser == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
-        }
-
-        UserProfile profile = findExistingUser(email);
-        if (profile != null && !profile.active()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not activated yet. Please contact admin.");
-        }
-
-        if (!defaultPasswordService.passwordMatches(password, authUser.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
-        }
-
-        String token = jwtConfig.generateToken(authUser.getEmail(), authUser.getName(), authUser.getRole());
-        return new LoginResult(token, "Bearer", authUser.getEmail(), authUser.getName(), authUser.getRole(), null);
+    public AuthService(
+            AuthUserRepository authUserRepository,
+            @Qualifier("googleJwtDecoder") JwtDecoder googleJwtDecoder,
+            JwtService jwtService,
+            @Value("${user-service.base-url}") String userServiceBaseUrl) {
+        this.authUserRepository = authUserRepository;
+        this.googleJwtDecoder = googleJwtDecoder;
+        this.jwtService = jwtService;
+        this.userServiceBaseUrl = userServiceBaseUrl;
     }
 
-    public LoginResult register(String name, String email, String password) {
-        if (defaultPasswordService.emailExists(email)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "User with email " + email + " already exists");
+    public LoginResult googleLogin(String idToken) {
+        Jwt jwt = verifyGoogleToken(idToken);
+        String email = jwt.getClaimAsString("email");
+        String name = jwt.getClaimAsString("name");
+        if (email == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google account has no email");
         }
 
-        registerInUserService(name, email);
+        String role = resolveRole(name, email);
+        String accessToken = jwtService.generateToken(email, name, role);
+        UserProfile profile = registerInUserService(name, email, role, accessToken);
 
-        AuthUser authUser = AuthUser.builder()
+        if (Boolean.FALSE.equals(profile.active())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Account is inactive. Please contact an administrator."
+            );
+        }
+
+        return new LoginResult(accessToken, "Bearer", email, name, role, null);
+    }
+
+    private String resolveRole(String name, String email) {
+        AuthUser existing = authUserRepository.findByEmail(email).orElse(null);
+        if (existing != null) {
+            return existing.getRole();
+        }
+        authUserRepository.save(AuthUser.builder()
                 .name(name)
                 .email(email)
-                .password(defaultPasswordService.encode(password))
                 .role("USER")
+                .build());
+        return "USER";
+    }
+
+    private Jwt verifyGoogleToken(String idToken) {
+        try {
+            return googleJwtDecoder.decode(idToken);
+        } catch (JwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google token");
+        }
+    }
+
+    private UserProfile registerInUserService(String name, String email, String role, String accessToken) {
+        RestClient client = RestClient.builder()
+                .baseUrl(userServiceBaseUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .build();
-        authUserRepository.save(authUser);
 
-        return new LoginResult(null, null, email, name, "USER", null);
+        try {
+            return client.post()
+                    .uri("/v1/users/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new RegisterProfileRequest(name, email, true, role))
+                    .retrieve()
+                    .body(UserProfile.class);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() != HttpStatus.CONFLICT.value()) {
+                throw e;
+            }
+        }
+
+        return fetchUserProfile(email, client);
     }
 
-    public AuthUser getUserByEmail(String email) {
-        return authUserRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-    }
-
-    private UserProfile findExistingUser(String email) {
-        RestClient client = defaultPasswordService.userService();
-
+    private UserProfile fetchUserProfile(String email, RestClient client) {
         try {
             return client.get()
                     .uri("/v1/users/email/{email}", email)
                     .retrieve()
                     .body(UserProfile.class);
-        } catch (Exception e) {
-            return null;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
+                throw new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Profile not found in user-service"
+                );
+            }
+            throw e;
         }
     }
 
-    private void registerInUserService(String name, String email) {
-        RestClient client = defaultPasswordService.userService();
+    public void changeRole(String email, String role) {
+        String normalized = role == null ? null : role.trim().toUpperCase(Locale.ROOT);
+        if (!"ADMIN".equals(normalized) && !"USER".equals(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role must be ADMIN or USER");
+        }
 
-        client.post()
-                .uri("/v1/users/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new RegisterProfileRequest(name, email))
-                .retrieve()
-                .toBodilessEntity();
+        AuthUser authUser = authUserRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found with email: " + email
+                ));
+
+        authUser.setRole(normalized);
+        authUserRepository.save(authUser);
     }
 
     public record LoginResult(
@@ -95,9 +143,9 @@ public class AuthService {
             String defaultPassword) {
     }
 
-    public record UserProfile(Long id, String name, String email, boolean active) {
+    public record RegisterProfileRequest(String name, String email, boolean active, String role) {
     }
 
-    public record RegisterProfileRequest(String name, String email) {
+    public record UserProfile(String email, boolean active) {
     }
 }

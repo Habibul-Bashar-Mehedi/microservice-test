@@ -18,9 +18,21 @@ spring:
       hibernate:
         format_sql: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+          issuer-uri: https://accounts.google.com
+
 user-service:
   base-url: http://localhost:8081
 
 jwt:
-  secret: microservice-tests-super-secret-key-please-change-0123456789
-  expiration-ms: 3600000
+  secret: 7a4f0c9b2e5d8a1c3f6b9e2d4a7c0f3b6e9a2d4c7f0b3e6a9d2c4f7b0e3a6c
+  issuer: auth-service
+
+oauth2:
+  google-client-id: 431304946036-ra24hsuvu0gviu7bsd77ivvhsio0qhpu.apps.googleusercontent.com
+  admin-emails:
+    - habibulbashar102001@gmail.com

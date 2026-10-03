@@ -32,6 +32,24 @@ public class RestClientUserClient implements UserClient {
         return status != null && status.active();
     }
 
+    @Override
+    public String getEmail(Long userId) {
+        HttpOperation operation = properties.getGetUser();
+
+        try {
+            UserProfile profile = userServiceRestClient.method(operation.getMethod())
+                    .uri(operation.getPath(), userId)
+                    .retrieve()
+                    .body(UserProfile.class);
+            return profile != null ? profile.email() : null;
+        } catch (RestClientResponseException e) {
+            return null;
+        }
+    }
+
     public record UserStatus(boolean active) {
+    }
+
+    public record UserProfile(Long id, String name, String email, boolean active) {
     }
 }

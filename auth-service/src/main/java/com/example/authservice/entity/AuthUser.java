@@ -32,8 +32,5 @@ public class AuthUser {
     private String email;
 
     @Column(nullable = false)
-    private String password;
-
-    @Column(nullable = false)
     private String role;
 }

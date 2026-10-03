@@ -25,6 +25,14 @@
 
             <h2>Available Products</h2>
             <button type="button" (click)="loadProducts()">Refresh</button>
+            <input
+                type="search"
+                name="product-search"
+                placeholder="Search products..."
+                [(ngModel)]="searchQuery"
+                (keyup.enter)="search()"
+            >
+            <button type="button" (click)="search()">Search</button>
             <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
             <table>
                 <thead>
@@ -78,6 +86,13 @@
                 <table>
                     <thead>
                     <tr>
+                        <th>
+                            <label><input
+                                type="checkbox"
+                                [checked]="cart.isAllSelected()"
+                                (change)="cart.setAllSelected($any($event.target).checked)"
+                            > All</label>
+                        </th>
                         <th>Product</th>
                         <th>Price</th>
                         <th>Quantity</th>
@@ -88,6 +103,13 @@
                     <tbody>
                         @for (item of cartItems(); track item.productId) {
                             <tr>
+                                <td>
+                                    <input
+                                        type="checkbox"
+                                        [checked]="item.selected"
+                                        (change)="cart.toggleSelected(item.productId)"
+                                    >
+                                </td>
                                 <td>{{ item.name }}</td>
                                 <td>{{ item.price }}</td>
                                 <td>
@@ -107,12 +129,12 @@
                         }
                     </tbody>
                 </table>
-                <p><strong>Total: {{ cartTotal() }}</strong></p>
+                <p><strong>Selected Total: {{ selectedTotal() }}</strong></p>
                 <button
                     type="button"
                     (click)="checkout()"
-                    [disabled]="checkingOut()"
-                >Checkout</button>
+                    [disabled]="checkingOut() || selectedCount() === 0"
+                >Checkout Selected</button>
             }
 
             <h2>My Orders</h2>
@@ -146,6 +168,8 @@
                                             (click)="cancelOrder(o)"
                                             [disabled]="cancelling()"
                                         >Cancel</button>
+                                    } @else if (o.status === 'CONFIRMED') {
+                                        <span>Confirmed</span>
                                     }
                                 </td>
                             </tr>

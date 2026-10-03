@@ -5,20 +5,9 @@ import { Observable } from 'rxjs';
 
 import { API } from './api-config';
 
-export interface LoginRequest {
-    email: string;
-    password: string;
-}
-
-export interface RegisterRequest {
-    name: string;
-    email: string;
-    password: string;
-}
-
 export interface LoginResponse {
-    accessToken: string;
-    tokenType: string;
+    accessToken: string | null;
+    tokenType: string | null;
     email: string;
     name: string;
     role: string;
@@ -40,20 +29,12 @@ export class AuthService {
         this.scheduleAutoLogout();
     }
 
-    login(credentials: LoginRequest): Observable<LoginResponse> {
-        return this.http.post<LoginResponse>(API.authV1 + '/login', credentials);
-    }
-
-    register(data: RegisterRequest): Observable<LoginResponse> {
-        return this.http.post<LoginResponse>(API.authV1 + '/register', data);
-    }
-
-    me(): Observable<LoginResponse> {
-        return this.http.get<LoginResponse>(API.authV1 + '/me');
+    googleLogin(idToken: string): Observable<LoginResponse> {
+        return this.http.post<LoginResponse>(API.authV1 + '/google', {idToken});
     }
 
     setSession(res: LoginResponse) {
-        localStorage.setItem(TOKEN_KEY, res.accessToken);
+        localStorage.setItem(TOKEN_KEY, res.accessToken ?? '');
         localStorage.setItem(USER_KEY, JSON.stringify({email: res.email, name: res.name, role: res.role}));
         this.scheduleAutoLogout();
     }

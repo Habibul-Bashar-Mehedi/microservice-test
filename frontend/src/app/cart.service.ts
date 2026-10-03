@@ -8,6 +8,7 @@ export interface CartItem {
     price: number;
     quantity: number;
     availableQuantity: number;
+    selected: boolean;
 }
 
 const CART_KEY = 'cart_items';
@@ -23,7 +24,7 @@ export class CartService {
         if (existing) {
             next = this.items().map(i =>
                 i.productId === product.id
-                    ? {...i, quantity: Math.min(i.quantity + quantity, product.availableQuantity)}
+                    ? {...i, quantity: Math.min(i.quantity + quantity, product.availableQuantity), selected: true}
                     : i
             );
         } else {
@@ -32,7 +33,8 @@ export class CartService {
                 name: product.name,
                 price: product.price,
                 quantity,
-                availableQuantity: product.availableQuantity
+                availableQuantity: product.availableQuantity,
+                selected: true
             }];
         }
         this.save(next);
@@ -50,12 +52,35 @@ export class CartService {
         this.save(this.items().filter(i => i.productId !== productId));
     }
 
+    toggleSelected(productId: number) {
+        this.save(this.items().map(i =>
+            i.productId === productId ? {...i, selected: !i.selected} : i
+        ));
+    }
+
+    setAllSelected(selected: boolean) {
+        this.save(this.items().map(i => ({...i, selected})));
+    }
+
     clear() {
         this.save([]);
     }
 
     total(): number {
         return this.items().reduce((sum, i) => sum + i.price * i.quantity, 0);
+    }
+
+    selectedItems(): CartItem[] {
+        return this.items().filter(i => i.selected);
+    }
+
+    selectedTotal(): number {
+        return this.selectedItems().reduce((sum, i) => sum + i.price * i.quantity, 0);
+    }
+
+    isAllSelected(): boolean {
+        const items = this.items();
+        return items.length > 0 && items.every(i => i.selected);
     }
 
     private save(items: CartItem[]) {
@@ -65,7 +90,8 @@ export class CartService {
 
     private load(): CartItem[] {
         try {
-            return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as CartItem[];
+            return (JSON.parse(localStorage.getItem(CART_KEY) || '[]') as CartItem[])
+                .map(i => ({...i, selected: i.selected ?? true}));
         } catch {
             return [];
         }

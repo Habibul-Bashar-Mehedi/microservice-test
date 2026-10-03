@@ -3,6 +3,7 @@ export interface User {
     name: string;
     email: string;
     active: boolean;
+    role: string;
 }
 
 export interface Product {
@@ -30,5 +31,6 @@ export interface MessageLog {
     payload: string;
     status: 'SUCCESS' | 'FAILED';
     detail: string;
+    email: string | null;
     createdAt: string;
 }

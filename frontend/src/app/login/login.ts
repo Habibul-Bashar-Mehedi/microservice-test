@@ -1,36 +1,67 @@
-import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../auth.service';
+import { GOOGLE_CLIENT_ID } from '../api-config';
+
+declare global {
+    interface Window {
+        google?: {
+            accounts: {
+                id: {
+                    initialize(config: {
+                        client_id: string;
+                        callback: (response: {credential: string}) => void;
+                    }): void;
+                    renderButton(
+                        parent: HTMLElement,
+                        options: {theme?: string; size?: string; width?: number}
+                    ): void;
+                };
+            };
+        };
+    }
+}
 
 @Component({
     selector: 'app-login',
-    imports: [FormsModule],
+    imports: [],
     templateUrl: './login.html',
     styleUrl: './login.css'
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
+
+    @ViewChild('googleButton') googleButton!: ElementRef<HTMLElement>;
 
     private auth = inject(AuthService);
     private router = inject(Router);
 
-    form = {email: '', password: ''};
     message = signal('');
     isError = signal(false);
-    showPassword = false;
 
-    togglePassword() {
-        this.showPassword = !this.showPassword;
+    ngAfterViewInit() {
+        const google = window.google;
+        if (!google?.accounts) {
+            this.message.set('Google Identity Services failed to load.');
+            this.isError.set(true);
+            return;
+        }
+
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: (response) => this.onCredential(response.credential)
+        });
+
+        google.accounts.id.renderButton(this.googleButton.nativeElement, {
+            theme: 'outline',
+            size: 'large'
+        });
     }
 
-    login() {
-        this.auth.login(this.form).subscribe({
+    private onCredential(idToken: string) {
+        this.auth.googleLogin(idToken).subscribe({
             next: (res) => {
                 this.auth.setSession(res);
-                this.message.set(res.defaultPassword
-                    ? 'Welcome back! Your default password is ' + res.defaultPassword
-                    : 'Login successful.');
                 this.isError.set(false);
                 this.router.navigate(['/dashboard']);
             },

@@ -2,9 +2,13 @@ package com.example.productservice.controller;
 
 import com.example.productservice.entity.Product;
 import com.example.productservice.service.InsufficientStockException;
+import com.example.productservice.service.ProductSearchService;
 import com.example.productservice.service.ProductService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -27,6 +32,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductSearchService productSearchService;
 
     @PostMapping("/v1/products")
     public ResponseEntity<Product> createV1(@Valid @RequestBody Product product) {
@@ -43,12 +49,64 @@ public class ProductController {
         return productService.findAll();
     }
 
+    @GetMapping("/v1/products/search")
+    public List<Product> searchV1(@RequestParam(name = "q", defaultValue = "") String q) {
+        if (q == null || q.isBlank()) {
+            return productService.findAll();
+        }
+        return productSearchService.search(q.trim())
+                .stream()
+                .map(doc -> Product.builder()
+                        .id(doc.getId())
+                        .name(doc.getName())
+                        .price(doc.getPrice())
+                        .availableQuantity(doc.getAvailableQuantity())
+                        .build())
+                .toList();
+    }
+
     @PutMapping("/v1/products/{id}/quantity")
     public ResponseEntity<Product> updateQuantityV1(
             @PathVariable Long id,
             @RequestBody @Min(value = 1, message = "Quantity must be positive") Integer quantity
     ) {
         Product updated = productService.updateQuantity(id, quantity);
+
+        return updated == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(updated);
+    }
+
+    @PutMapping("/v1/products/{id}/add-quantity")
+    public ResponseEntity<Product> addQuantityV1(
+            @PathVariable Long id,
+            @RequestBody @Min(value = 1, message = "Quantity must be positive") Integer quantity
+    ) {
+        Product updated = productService.addQuantity(id, quantity);
+
+        return updated == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(updated);
+    }
+
+    @PutMapping("/v1/products/{id}/price")
+    public ResponseEntity<Product> updatePriceV1(
+            @PathVariable Long id,
+            @RequestBody @DecimalMin(value = "0.01", message = "Price must be greater than 0") BigDecimal price
+    ) {
+        Product updated = productService.updatePrice(id, price);
+
+        return updated == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(updated);
+    }
+
+    @PutMapping("/v1/products/{id}/name")
+    public ResponseEntity<Product> updateNameV1(
+            @PathVariable Long id,
+            @RequestBody @NotBlank(message = "Name must not be blank") String name
+    ) {
+        Product updated = productService.updateName(id, name);
 
         return updated == null
                 ? ResponseEntity.notFound().build()

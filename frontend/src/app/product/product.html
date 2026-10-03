@@ -18,6 +18,9 @@
         <th>Name</th>
         <th>Price</th>
         <th>Available Quantity</th>
+        <th>Add Stock</th>
+        <th>Update Price</th>
+        <th>Update Name</th>
     </tr>
     </thead>
     <tbody>
@@ -27,6 +30,36 @@
                 <td>{{ p.name }}</td>
                 <td>{{ p.price }}</td>
                 <td>{{ p.availableQuantity }}</td>
+                <td>
+                    <input
+                        type="number"
+                        min="1"
+                        name="add-stock-{{ p.id }}"
+                        [(ngModel)]="amounts[p.id]"
+                        placeholder="Qty"
+                    >
+                    <button type="button" (click)="addQuantity(p)">Add</button>
+                </td>
+                <td>
+                    <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        name="price-{{ p.id }}"
+                        [(ngModel)]="prices[p.id]"
+                        placeholder="New price"
+                    >
+                    <button type="button" (click)="updatePrice(p)">Update</button>
+                </td>
+                <td>
+                    <input
+                        type="text"
+                        name="name-{{ p.id }}"
+                        [(ngModel)]="names[p.id]"
+                        placeholder="New name"
+                    >
+                    <button type="button" (click)="updateName(p)">Update</button>
+                </td>
             </tr>
         }
     </tbody>

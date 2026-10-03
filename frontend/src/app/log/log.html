@@ -3,6 +3,14 @@
 
 <button type="button" (click)="load()">Refresh</button>
 <button type="button" (click)="clearAll()" [disabled]="clearing()">Clear All Logs</button>
+<input
+    type="search"
+    name="log-search"
+    placeholder="Search logs..."
+    [(ngModel)]="searchQuery"
+    (keyup.enter)="search()"
+>
+<button type="button" (click)="search()">Search</button>
 <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
 <label>Service
@@ -43,6 +51,7 @@
             <th>Direction</th>
             <th>Routing Key</th>
             <th>Status</th>
+            <th>Email</th>
             <th>Detail</th>
             <th>Payload (JSON)</th>
         </tr>
@@ -56,6 +65,7 @@
                     <td>{{ l.direction }}</td>
                     <td>{{ l.routingKey }}</td>
                     <td>{{ l.status }}</td>
+                    <td>{{ l.email || '—' }}</td>
                     <td>{{ l.detail }}</td>
                     <td><pre>{{ l.payload }}</pre></td>
                 </tr>

@@ -2,14 +2,16 @@ package com.example.authservice.controller;
 
 import com.example.authservice.service.AuthService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,16 +21,16 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
-        AuthService.LoginResult result = authService.login(request.email(), request.password());
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> google(@RequestBody @Valid GoogleRequest request) {
+        AuthService.LoginResult result = authService.googleLogin(request.idToken());
         return ResponseEntity.ok(toResponse(result));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@RequestBody @Valid RegisterRequest request) {
-        AuthService.LoginResult result = authService.register(request.name(), request.email(), request.password());
-        return ResponseEntity.ok(toResponse(result));
+    @PatchMapping("/users/{email}/role")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changeRole(@PathVariable String email, @RequestBody @Valid ChangeRoleRequest request) {
+        authService.changeRole(email, request.role());
     }
 
     private LoginResponse toResponse(AuthService.LoginResult result) {
@@ -41,15 +43,10 @@ public class AuthController {
                 result.defaultPassword());
     }
 
-    public record LoginRequest(
-            @NotBlank @Email String email,
-            @NotBlank @Size(min = 6, max = 100) String password) {
+    public record GoogleRequest(@NotBlank String idToken) {
     }
 
-    public record RegisterRequest(
-            @NotBlank String name,
-            @NotBlank @Email String email,
-            @NotBlank @Size(min = 6, max = 100) String password) {
+    public record ChangeRoleRequest(@NotBlank String role) {
     }
 
     public record LoginResponse(

@@ -38,4 +38,8 @@ public class User {
     @Builder.Default
     @Column(nullable = false)
     private Boolean active = false;
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'USER'")
+    private String role = "USER";
 }

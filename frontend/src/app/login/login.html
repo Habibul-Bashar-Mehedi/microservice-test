@@ -1,16 +1,5 @@
 <h1>Login</h1>
 
-<form (ngSubmit)="login()">
-    <label>Email <input type="email" name="email" [(ngModel)]="form.email" required></label>
-    <label>
-        Password
-        <span class="password-wrap">
-            <input [type]="showPassword ? 'text' : 'password'" name="password" [(ngModel)]="form.password" required>
-            <button type="button" class="eye-btn" (click)="togglePassword()" [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">{{ showPassword ? '🙈' : '👁️' }}</button>
-        </span>
-    </label>
-    <button type="submit">Login</button>
-</form>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+<div #googleButton></div>
 
-<p>Demo admin: admin@example.com / admin123 — activate new users from the Users page.</p>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>

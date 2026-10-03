@@ -61,6 +61,17 @@ export class UserComponent implements OnInit {
         });
     }
 
+    changeRole(u: User, role: string) {
+        this.http.patch<User>(this.base + '/users/' + u.id + '/role', {role}).subscribe({
+            next: () => {
+                this.message.set(role === 'ADMIN' ? 'User is now an admin.' : 'User is now a general user.');
+                this.isError.set(false);
+                this.load();
+            },
+            error: (err) => this.fail(err)
+        });
+    }
+
     private fail(err: any) {
         this.message.set(err?.error?.message || err?.message || 'Request failed');
         this.isError.set(true);

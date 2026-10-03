@@ -23,22 +23,35 @@ public class LogClient {
     }
 
     public void recordPublish(String routingKey, Object payload) {
-        record("PUBLISHED", routingKey, null, payload, "SUCCESS", null);
+        record("PUBLISHED", routingKey, null, payload, "SUCCESS", null, null);
+    }
+
+    public void recordPublish(String routingKey, Object payload, String email) {
+        record("PUBLISHED", routingKey, null, payload, "SUCCESS", null, email);
     }
 
     public void recordPublishFailed(String routingKey, Object payload, String detail) {
-        record("PUBLISHED", routingKey, null, payload, "FAILED", detail);
+        record("PUBLISHED", routingKey, null, payload, "FAILED", detail, null);
     }
 
     public void recordConsume(String routingKey, String queue, Object payload) {
-        record("CONSUMED", routingKey, queue, payload, "SUCCESS", null);
+        record("CONSUMED", routingKey, queue, payload, "SUCCESS", null, null);
+    }
+
+    public void recordConsume(String routingKey, String queue, Object payload, String email) {
+        record("CONSUMED", routingKey, queue, payload, "SUCCESS", null, email);
     }
 
     public void recordConsumeFailed(String routingKey, String queue, Object payload, String detail) {
-        record("CONSUMED", routingKey, queue, payload, "FAILED", detail);
+        record("CONSUMED", routingKey, queue, payload, "FAILED", detail, null);
     }
 
-    private void record(String direction, String routingKey, String queue, Object payload, String status, String detail) {
+    public void recordConsumeFailed(String routingKey, String queue, Object payload, String detail, String email) {
+        record("CONSUMED", routingKey, queue, payload, "FAILED", detail, email);
+    }
+
+    private void record(String direction, String routingKey, String queue, Object payload, String status, String detail,
+            String email) {
         try {
             restClient.post()
                     .uri("/v1/logs")
@@ -48,6 +61,7 @@ public class LogClient {
                             direction,
                             routingKey,
                             queue,
+                            email,
                             toJson(payload),
                             status,
                             detail
@@ -72,6 +86,7 @@ public class LogClient {
             String direction,
             String routingKey,
             String queue,
+            String email,
             String payload,
             String status,
             String detail

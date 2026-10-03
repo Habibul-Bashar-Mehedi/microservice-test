@@ -19,6 +19,9 @@ export class ProductComponent implements OnInit {
 
     products = signal<Product[]>([]);
     form = {name: '', price: null as number | null, availableQuantity: null as number | null};
+    amounts: Record<number, number> = {};
+    prices: Record<number, number> = {};
+    names: Record<number, string> = {};
     message = signal('');
     isError = signal(false);
 
@@ -46,6 +49,63 @@ export class ProductComponent implements OnInit {
     load() {
         this.http.get<Product[]>(this.base + '/products').subscribe({
             next: (data) => this.products.set(data),
+            error: (err) => this.fail(err)
+        });
+    }
+
+    addQuantity(product: Product) {
+        const amount = this.amounts[product.id];
+        if (!amount || amount < 1) {
+            this.message.set('Quantity must be at least 1.');
+            this.isError.set(true);
+            return;
+        }
+
+        this.http.put<Product>(this.base + '/products/' + product.id + '/add-quantity', amount).subscribe({
+            next: () => {
+                this.message.set('Added ' + amount + ' to product ' + product.id + '.');
+                this.isError.set(false);
+                this.amounts[product.id] = 0;
+                this.load();
+            },
+            error: (err) => this.fail(err)
+        });
+    }
+
+    updatePrice(product: Product) {
+        const price = this.prices[product.id];
+        if (price == null || price <= 0) {
+            this.message.set('Price must be greater than 0.');
+            this.isError.set(true);
+            return;
+        }
+
+        this.http.put<Product>(this.base + '/products/' + product.id + '/price', price).subscribe({
+            next: () => {
+                this.message.set('Price updated for product ' + product.id + '.');
+                this.isError.set(false);
+                this.prices[product.id] = 0;
+                this.load();
+            },
+            error: (err) => this.fail(err)
+        });
+    }
+
+    updateName(product: Product) {
+        const name = this.names[product.id];
+        if (!name || !name.trim()) {
+            this.message.set('Name must not be blank.');
+            this.isError.set(true);
+            return;
+        }
+
+        this.http.put<Product>(this.base + '/products/' + product.id + '/name', name.trim()).subscribe({
+            next: () => {
+                this.message.set('Name updated for product ' + product.id + '.');
+                this.isError.set(false);
+                this.names[product.id] = '';
+                this.load();
+            },
             error: (err) => this.fail(err)
         });
     }

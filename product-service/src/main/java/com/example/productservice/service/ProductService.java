@@ -2,6 +2,7 @@ package com.example.productservice.service;
 
 import com.example.productservice.entity.Product;
 import com.example.productservice.repository.ProductRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -17,11 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductSearchService productSearchService;
 
     @CacheEvict(value = {"products"}, allEntries = true)
     public Product create(Product product) {
         try {
-            return productRepository.save(product);
+            Product saved = productRepository.save(product);
+            productSearchService.index(saved);
+            return saved;
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -59,6 +63,60 @@ public class ProductService {
         }
 
         product.setAvailableQuantity(remaining);
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById"}, allEntries = true)
+    public Product addQuantity(Long id, Integer quantity) {
+        Product product = productRepository.findByIdForUpdate(id).orElse(null);
+
+        if (product == null) {
+            return null;
+        }
+
+        product.setAvailableQuantity(product.getAvailableQuantity() + quantity);
+        Product saved = productRepository.save(product);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById"}, allEntries = true)
+    public Product updatePrice(Long id, BigDecimal price) {
+        Product product = productRepository.findById(id).orElse(null);
+
+        if (product == null) {
+            return null;
+        }
+
+        product.setPrice(price);
+        Product saved = productRepository.save(product);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById"}, allEntries = true)
+    public Product updateName(Long id, String name) {
+        Product product = productRepository.findById(id).orElse(null);
+
+        if (product == null) {
+            return null;
+        }
+
+        try {
+            product.setName(name);
+            Product saved = productRepository.save(product);
+            productSearchService.index(saved);
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Product with name " + name + " already exists"
+            );
+        }
     }
 }

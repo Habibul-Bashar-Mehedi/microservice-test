@@ -38,6 +38,9 @@ public class MessageLog {
     @Column(name = "queue")
     private String queue;
 
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "payload", columnDefinition = "TEXT")
     private String payload;
 

@@ -2,21 +2,30 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.User;
 import com.example.userservice.repository.UserRepository;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+
+    @Value("${auth-service.base-url}")
+    private String authServiceBaseUrl;
 
     @Transactional
     @CacheEvict(value = {"users"}, allEntries = true)
@@ -29,6 +38,7 @@ public class UserService {
         }
 
         user.setActive(false);
+        user.setRole(normalizeRole(user.getRole()));
         return userRepository.save(user);
     }
 
@@ -55,16 +65,15 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = {"users"}, allEntries = true)
+    @CacheEvict(value = {"users", "userById"}, allEntries = true)
     public User register(User user) {
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "User with email " + user.getEmail() + " already exists"
-            );
+        User existing = userRepository.findByEmail(user.getEmail()).orElse(null);
+        if (existing != null) {
+            existing.setRole(normalizeRole(user.getRole()));
+            return userRepository.save(existing);
         }
 
-        user.setActive(false);
+        user.setRole(normalizeRole(user.getRole()));
         return userRepository.save(user);
     }
 
@@ -79,5 +88,62 @@ public class UserService {
 
         user.setActive(active);
         return userRepository.save(user);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    public User setRole(Long id, String role, String authHeader) {
+        String normalized = normalizeRole(role);
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found with id: " + id
+                ));
+
+        user.setRole(normalized);
+        User saved = userRepository.save(user);
+        syncRoleWithAuthService(saved.getEmail(), normalized, authHeader);
+        return saved;
+    }
+
+    private void syncRoleWithAuthService(String email, String role, String authHeader) {
+        if (authHeader == null || authHeader.isBlank()) {
+            return;
+        }
+
+        RestClient client = RestClient.builder()
+                .baseUrl(authServiceBaseUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, authHeader)
+                .build();
+
+        try {
+            client.patch()
+                    .uri("/auth/users/{email}/role", email)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("role", role))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            throw new ResponseStatusException(
+                    e.getStatusCode(),
+                    "Role updated locally but failed to sync with auth-service: "
+                            + e.getResponseBodyAsString()
+            );
+        }
+    }
+
+    private String normalizeRole(String role) {
+        String normalized = role == null || role.isBlank() ? null : role.trim().toUpperCase(Locale.ROOT);
+        if (normalized == null) {
+            return "USER";
+        }
+        if (!"ADMIN".equals(normalized) && !"USER".equals(normalized)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Role must be ADMIN or USER"
+            );
+        }
+        return normalized;
     }
 }

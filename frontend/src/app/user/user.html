@@ -17,6 +17,8 @@
         <th>Name</th>
         <th>Email</th>
         <th>Active</th>
+        <th>Role</th>
+        <th>Change Role</th>
         <th>Action</th>
     </tr>
     </thead>
@@ -27,6 +29,14 @@
                 <td>{{ u.name }}</td>
                 <td>{{ u.email }}</td>
                 <td>{{ u.active }}</td>
+                <td>{{ u.role }}</td>
+                <td>
+                    @if (u.role === 'ADMIN') {
+                        <button type="button" (click)="changeRole(u, 'USER')">Make User</button>
+                    } @else {
+                        <button type="button" (click)="changeRole(u, 'ADMIN')">Make Admin</button>
+                    }
+                </td>
                 <td>
                     @if (u.active) {
                         <button type="button" (click)="setActive(u, false)">Deactivate</button>

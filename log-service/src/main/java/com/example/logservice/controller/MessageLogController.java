@@ -1,6 +1,8 @@
 package com.example.logservice.controller;
 
 import com.example.logservice.entity.MessageLog;
+import com.example.logservice.entity.MessageLogDocument;
+import com.example.logservice.service.MessageLogSearchService;
 import com.example.logservice.service.MessageLogService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MessageLogController {
 
     private final MessageLogService messageLogService;
+    private final MessageLogSearchService messageLogSearchService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -32,6 +36,7 @@ public class MessageLogController {
                 .direction(request.direction())
                 .routingKey(request.routingKey())
                 .queue(request.queue())
+                .email(request.email())
                 .payload(request.payload())
                 .status(request.status())
                 .detail(request.detail())
@@ -45,6 +50,14 @@ public class MessageLogController {
         return messageLogService.findAll();
     }
 
+    @GetMapping("/search")
+    public List<MessageLogDocument> search(@RequestParam(name = "q", defaultValue = "") String q) {
+        if (q == null || q.isBlank()) {
+            return messageLogSearchService.search(" ");
+        }
+        return messageLogSearchService.search(q.trim());
+    }
+
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void clearAll() {
@@ -56,6 +69,7 @@ public class MessageLogController {
             @NotBlank String direction,
             @NotBlank String routingKey,
             String queue,
+            String email,
             String payload,
             @NotBlank String status,
             String detail
