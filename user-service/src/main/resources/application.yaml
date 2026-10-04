@@ -5,6 +5,17 @@ spring:
   application:
     name: user-service
 
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        prefer-ip-address: true
+        register-health-check: false
+    loadbalancer:
+      enabled: true
+
   cache:
     type: jcache
     jcache:
@@ -39,7 +50,7 @@ jwt:
   issuer: auth-service
 
 auth-service:
-  base-url: http://localhost:8080
+  base-url: http://auth-service
 
 oauth2:
   google-client-id: 431304946036-ra24hsuvu0gviu7bsd77ivvhsio0qhpu.apps.googleusercontent.com

@@ -1,0 +1,9 @@
+{
+  "service": {
+    "name": "kafka",
+    "id": "kafka-1",
+    "address": "localhost",
+    "port": 9092,
+    "tags": ["kafka", "broker"]
+  }
+}

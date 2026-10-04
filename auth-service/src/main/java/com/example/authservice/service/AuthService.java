@@ -23,16 +23,19 @@ public class AuthService {
     private final AuthUserRepository authUserRepository;
     private final JwtDecoder googleJwtDecoder;
     private final JwtService jwtService;
+    private final RestClient.Builder restClientBuilder;
     private final String userServiceBaseUrl;
 
     public AuthService(
             AuthUserRepository authUserRepository,
             @Qualifier("googleJwtDecoder") JwtDecoder googleJwtDecoder,
             JwtService jwtService,
+            RestClient.Builder restClientBuilder,
             @Value("${user-service.base-url}") String userServiceBaseUrl) {
         this.authUserRepository = authUserRepository;
         this.googleJwtDecoder = googleJwtDecoder;
         this.jwtService = jwtService;
+        this.restClientBuilder = restClientBuilder;
         this.userServiceBaseUrl = userServiceBaseUrl;
     }
 
@@ -80,7 +83,7 @@ public class AuthService {
     }
 
     private UserProfile registerInUserService(String name, String email, String role, String accessToken) {
-        RestClient client = RestClient.builder()
+        RestClient client = restClientBuilder
                 .baseUrl(userServiceBaseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .build();

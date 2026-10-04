@@ -2,6 +2,7 @@ package com.example.orderservice.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -13,9 +14,15 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class RestClientConfig {
 
     @Bean
+    @LoadBalanced
+    public RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
+    }
+
+    @Bean
     @Qualifier("userServiceRestClient")
-    public RestClient userServiceRestClient(UserServiceProperties properties) {
-        return RestClient.builder()
+    public RestClient userServiceRestClient(RestClient.Builder restClientBuilder, UserServiceProperties properties) {
+        return restClientBuilder
                 .baseUrl(properties.getBaseUrl())
                 .requestInterceptor((request, body, execution) -> {
                     forwardAuthorization(request);
@@ -26,8 +33,8 @@ public class RestClientConfig {
 
     @Bean
     @Qualifier("productServiceRestClient")
-    public RestClient productServiceRestClient(ProductServiceProperties properties) {
-        return RestClient.builder()
+    public RestClient productServiceRestClient(RestClient.Builder restClientBuilder, ProductServiceProperties properties) {
+        return restClientBuilder
                 .baseUrl(properties.getBaseUrl())
                 .requestInterceptor((request, body, execution) -> {
                     forwardAuthorization(request);

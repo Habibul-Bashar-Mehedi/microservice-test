@@ -2,19 +2,25 @@ server:
   port: 8083
 
 user-service:
-  base-url: http://localhost:8081
+  base-url: http://user-service
   get-user:
     method: GET
     path: /v1/users/{id}
 
 product-service:
-  base-url: http://localhost:8082
+  base-url: http://product-service
   update-quantity:
     method: PUT
     path: /v1/products/{id}/quantity
 
 log-service:
-  base-url: http://localhost:8084
+  base-url: http://log-service
+
+# Async (Kafka) broker is discovered from Consul by service name.
+# The binder `brokers` value below is only a fallback when Consul is unavailable.
+kafka:
+  discovery:
+    service-name: kafka
 
 spring:
   application:
@@ -26,6 +32,15 @@ spring:
       config: classpath:ehcache.xml
 
   cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        prefer-ip-address: true
+        register-health-check: false
+    loadbalancer:
+      enabled: true
     function:
       definition: orderCreatedListener;stockUpdatedListener;stockUpdateFailedListener
     stream:

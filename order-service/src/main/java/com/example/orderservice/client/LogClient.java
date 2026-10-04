@@ -17,9 +17,10 @@ public class LogClient {
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
 
-    public LogClient(@Value("${log-service.base-url}") String baseUrl, ObjectMapper objectMapper) {
+    public LogClient(RestClient.Builder restClientBuilder, @Value("${log-service.base-url}") String baseUrl,
+            ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
     }
 
     public void recordPublish(String routingKey, Object payload) {

@@ -5,6 +5,17 @@ spring:
   application:
     name: auth-service
 
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        prefer-ip-address: true
+        register-health-check: false
+    loadbalancer:
+      enabled: true
+
   datasource:
     url: jdbc:postgresql://localhost:5432/auth-service
     username: lemon
@@ -26,7 +37,7 @@ spring:
           issuer-uri: https://accounts.google.com
 
 user-service:
-  base-url: http://localhost:8081
+  base-url: http://user-service
 
 jwt:
   secret: 7a4f0c9b2e5d8a1c3f6b9e2d4a7c0f3b6e9a2d4c7f0b3e6a9d2c4f7b0e3a6c

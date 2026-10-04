@@ -2,7 +2,11 @@
 
 > High-level architecture of the whole system plus the key activity flows.
 > Ports: **auth 8080**, **user 8081**, **product 8082**, **order 8083**, **log 8084**,
-> **Kafka 9092**, **RabbitMQ 5672**, **PostgreSQL 5432**.
+> **Consul 8500**, **Kafka 9092**, **RabbitMQ 5672**, **PostgreSQL 5432**.
+> Service registry/discovery: **Consul** (all services self-register, service-to-service calls
+> resolve via Consul with **Round Robin** load balancing).
+> Communication: **sync** service calls → REST client (Consul-discovered); **async** → **Kafka**,
+> whose broker is also discovered from Consul.
 > Colors: **blue** = action, **amber** = decision, **red** = error/terminal, **green** = success,
 > **grey** = start/end, **purple** = service.
 
@@ -22,6 +26,10 @@ flowchart LR
     subgraph PLATFORM["Message Brokers"]
         KAFKA["Kafka (KRaft single node)<br/>topics: order.created · order.confirmed<br/>stock.updated · stock.failed"]:::inf
         RMQ["RabbitMQ 3.13-management<br/>(management UI 15672)"]:::inf
+    end
+
+    subgraph REG["Service Registry"]
+        CONSUL["Consul :8500<br/>service discovery + registry<br/>Round Robin LB"]:::inf
     end
 
     subgraph PG["PostgreSQL (5432, user: lemon)"]
@@ -57,13 +65,20 @@ flowchart LR
     OS --> DB_O
     LS --> DB_L
 
+    AS -.->|"register + discover"| CONSUL
+    US -.->|"register + discover"| CONSUL
+    PS -.->|"register + discover"| CONSUL
+    OS -.->|"register + discover"| CONSUL
+    LS -.->|"register + discover"| CONSUL
+    CONSUL -.->|"registers kafka broker<br/>(async discovery)"| KAFKA
+
     PS -->|"publish/consume"| KAFKA
     OS -->|"publish/consume"| KAFKA
 
     RMQ -.->|"available (unused by services)"| SERVICES
 
     class AS,US,PS,OS,LS svc;
-    class KAFKA,RMQ inf;
+    class KAFKA,RMQ,CONSUL inf;
     class DB_A,DB_U,DB_P,DB_O,DB_L db;
     class FE1 ext;
 ```

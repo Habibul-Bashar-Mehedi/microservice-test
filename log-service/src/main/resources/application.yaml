@@ -4,6 +4,17 @@ spring:
   application:
     name: log-service
 
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        prefer-ip-address: true
+        register-health-check: false
+    loadbalancer:
+      enabled: true
+
   datasource:
     url: jdbc:postgresql://localhost:5432/log-db
     username: lemon

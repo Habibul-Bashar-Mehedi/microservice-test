@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RestClient.Builder restClientBuilder;
 
     @Value("${auth-service.base-url}")
     private String authServiceBaseUrl;
@@ -112,7 +113,7 @@ public class UserService {
             return;
         }
 
-        RestClient client = RestClient.builder()
+        RestClient client = restClientBuilder
                 .baseUrl(authServiceBaseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, authHeader)
                 .build();

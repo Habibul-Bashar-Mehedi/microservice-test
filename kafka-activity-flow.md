@@ -3,6 +3,34 @@
 > Activity diagrams for the asynchronous order flow via Kafka. Colors mark node roles:
 > **blue** = action, **amber** = decision, **red** = error/terminal response, **green** = success,
 > **grey** = start/end. Topics are created via `KafkaConfig` `NewTopic` beans on startup.
+> Communication split: **synchronous** service calls use the REST client (Consul + Round Robin),
+> **asynchronous** calls use **Kafka**, whose broker is discovered from **Consul** at startup.
+
+## 0. Kafka Broker Discovery via Consul (Async Path)
+
+```mermaid
+flowchart TD
+    classDef act fill:#e8f0fe,stroke:#1a73e8,stroke-width:1px;
+    classDef dec fill:#fef7e0,stroke:#f9ab00,stroke-width:1px;
+    classDef err fill:#fce8e6,stroke:#d93025,stroke-width:1px;
+    classDef ok fill:#e6f4ea,stroke:#188038,stroke-width:1px;
+    classDef term fill:#f1f3f4,stroke:#5f6368,stroke-width:1px;
+    classDef reg fill:#f3e8fd,stroke:#9334e6,stroke-width:1px;
+
+    Start(["Service boot<br/>(order / product)"]):::term --> PP["EnvironmentPostProcessor<br/>KafkaBrokerDiscovery..."]:::act
+    PP --> Q["GET Consul catalog<br/>/v1/catalog/service/kafka"]:::reg
+    Q --> OK{"broker<br/>found?"}:::dec
+    OK -->|"yes"| SET["addFirst property source<br/>spring.cloud.stream.kafka.binder.brokers<br/>= localhost:9092"]:::act
+    OK -->|"no / Consul down"| FB["fall back to<br/>application.yaml brokers"]:::act
+    SET --> BIND["Spring Cloud Stream<br/>Kafka binder starts"]:::ok
+    FB --> BIND
+    BIND --> Stop(["publish / consume<br/>on Kafka topics"]):::term
+
+    class OK dec;
+    class PP,Q,SET,FB,BIND act;
+    class Q reg;
+    class Start,Stop term;
+```
 
 ## 1. Kafka Topology (Topics & Consumer Groups)
 
