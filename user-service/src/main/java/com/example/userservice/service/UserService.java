@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,6 +25,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RestClient.Builder restClientBuilder;
+    private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
 
     @Value("${auth-service.base-url}")
     private String authServiceBaseUrl;
@@ -113,6 +115,24 @@ public class UserService {
             return;
         }
 
+        circuitBreakerFactory.create("authService").run(
+                () -> {
+                    doSyncRoleWithAuthService(email, role, authHeader);
+                    return null;
+                },
+                throwable -> {
+                    if (throwable instanceof ResponseStatusException responseStatusException) {
+                        throw responseStatusException;
+                    }
+                    throw new ResponseStatusException(
+                            HttpStatus.SERVICE_UNAVAILABLE,
+                            "auth-service is unavailable: " + throwable.getMessage(),
+                            throwable
+                    );
+                });
+    }
+
+    private void doSyncRoleWithAuthService(String email, String role, String authHeader) {
         RestClient client = restClientBuilder
                 .baseUrl(authServiceBaseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, authHeader)

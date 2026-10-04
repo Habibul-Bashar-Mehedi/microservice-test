@@ -2,6 +2,7 @@ package com.example.orderservice.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -16,10 +17,12 @@ public class LogClient {
 
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
+    private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
 
-    public LogClient(RestClient.Builder restClientBuilder, @Value("${log-service.base-url}") String baseUrl,
-            ObjectMapper objectMapper) {
+    public LogClient(RestClient.Builder restClientBuilder, CircuitBreakerFactory<?, ?> circuitBreakerFactory,
+            @Value("${log-service.base-url}") String baseUrl, ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        this.circuitBreakerFactory = circuitBreakerFactory;
         this.restClient = restClientBuilder.baseUrl(baseUrl).build();
     }
 
@@ -53,25 +56,35 @@ public class LogClient {
 
     private void record(String direction, String routingKey, String queue, Object payload, String status, String detail,
             String email) {
-        try {
-            restClient.post()
-                    .uri("/v1/logs")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LogEntry(
-                            SERVICE_NAME,
-                            direction,
-                            routingKey,
-                            queue,
-                            email,
-                            toJson(payload),
-                            status,
-                            detail
-                    ))
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception e) {
-            log.warn("Failed to write message log for routing key {}: {}", routingKey, e.getMessage());
-        }
+        circuitBreakerFactory.create("logService").run(
+                () -> {
+                    postLog(direction, routingKey, queue, payload, status, detail, email);
+                    return null;
+                },
+                throwable -> {
+                    log.warn("Failed to write message log for routing key {}: {}",
+                            routingKey, throwable.getMessage());
+                    return null;
+                });
+    }
+
+    private void postLog(String direction, String routingKey, String queue, Object payload, String status, String detail,
+            String email) {
+        restClient.post()
+                .uri("/v1/logs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new LogEntry(
+                        SERVICE_NAME,
+                        direction,
+                        routingKey,
+                        queue,
+                        email,
+                        toJson(payload),
+                        status,
+                        detail
+                ))
+                .retrieve()
+                .toBodilessEntity();
     }
 
     private String toJson(Object payload) {

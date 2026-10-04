@@ -6,6 +6,7 @@ import com.example.authservice.repository.AuthUserRepository;
 import java.util.Locale;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,6 +25,7 @@ public class AuthService {
     private final JwtDecoder googleJwtDecoder;
     private final JwtService jwtService;
     private final RestClient.Builder restClientBuilder;
+    private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
     private final String userServiceBaseUrl;
 
     public AuthService(
@@ -31,11 +33,13 @@ public class AuthService {
             @Qualifier("googleJwtDecoder") JwtDecoder googleJwtDecoder,
             JwtService jwtService,
             RestClient.Builder restClientBuilder,
+            CircuitBreakerFactory<?, ?> circuitBreakerFactory,
             @Value("${user-service.base-url}") String userServiceBaseUrl) {
         this.authUserRepository = authUserRepository;
         this.googleJwtDecoder = googleJwtDecoder;
         this.jwtService = jwtService;
         this.restClientBuilder = restClientBuilder;
+        this.circuitBreakerFactory = circuitBreakerFactory;
         this.userServiceBaseUrl = userServiceBaseUrl;
     }
 
@@ -83,6 +87,18 @@ public class AuthService {
     }
 
     private UserProfile registerInUserService(String name, String email, String role, String accessToken) {
+        return circuitBreakerFactory.create("userService").run(
+                () -> doRegisterInUserService(name, email, role, accessToken),
+                throwable -> {
+                    throw new ResponseStatusException(
+                            HttpStatus.SERVICE_UNAVAILABLE,
+                            "user-service is unavailable: " + throwable.getMessage(),
+                            throwable
+                    );
+                });
+    }
+
+    private UserProfile doRegisterInUserService(String name, String email, String role, String accessToken) {
         RestClient client = restClientBuilder
                 .baseUrl(userServiceBaseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
