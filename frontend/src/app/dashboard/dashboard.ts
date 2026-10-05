@@ -14,7 +14,7 @@ interface OrderRequest {
     quantity: number;
 }
 
-type ApiVersion = 'v1' | 'v2';
+type ApiVersion = 'v1' | 'v2' | 'v3';
 
 const API_VERSION_KEY = 'order-api-version';
 
@@ -45,7 +45,18 @@ export class DashboardComponent implements OnInit {
     apiVersion = signal<ApiVersion>(this.loadSavedVersion());
 
     get base() {
-        return this.apiVersion() === 'v1' ? API.orderV1 : API.orderV2;
+        const version = this.apiVersion();
+        if (version === 'v2') {
+            return API.orderV2;
+        }
+        if (version === 'v3') {
+            return API.orderV3;
+        }
+        return API.orderV1;
+    }
+
+    private get cancelBase() {
+        return this.apiVersion() === 'v3' ? API.orderV3 : API.orderV1;
     }
 
     setVersion(version: ApiVersion) {
@@ -55,7 +66,7 @@ export class DashboardComponent implements OnInit {
 
     private loadSavedVersion(): ApiVersion {
         const saved = localStorage.getItem(API_VERSION_KEY);
-        return saved === 'v2' ? 'v2' : 'v1';
+        return saved === 'v2' || saved === 'v3' ? saved : 'v1';
     }
 
     private userProfileId: number | null = null;
@@ -171,7 +182,7 @@ export class DashboardComponent implements OnInit {
 
         this.cancelling.set(true);
         this.http.post<Order>(
-            API.orderV1 + '/orders/' + order.id + '/cancel?userId=' + this.userProfileId,
+            this.cancelBase + '/orders/' + order.id + '/cancel?userId=' + this.userProfileId,
             {}
         ).subscribe({
             next: () => {
@@ -246,7 +257,9 @@ export class DashboardComponent implements OnInit {
             next: () => {
                 this.message.set(version === 'v2'
                     ? 'Order placed (PENDING). User validation happens asynchronously.'
-                    : 'Order placed successfully. The admin will confirm it.');
+                    : version === 'v3'
+                        ? 'Order placed (PENDING) via Feign. The admin will confirm it.'
+                        : 'Order placed successfully. The admin will confirm it.');
                 this.isError.set(false);
                 this.placing.set(false);
                 this.loadOrders();

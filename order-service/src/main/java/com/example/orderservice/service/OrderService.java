@@ -1,7 +1,10 @@
 package com.example.orderservice.service;
 
 import com.example.orderservice.client.ProductClient;
+import com.example.orderservice.client.ProductServiceFeignClient;
 import com.example.orderservice.client.UserClient;
+import com.example.orderservice.client.UserProfile;
+import com.example.orderservice.client.UserServiceFeignClient;
 import com.example.orderservice.dto.OrderResponse;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.OrderStatus;
@@ -21,6 +24,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final UserClient userClient;
     private final ProductClient productClient;
+    private final UserServiceFeignClient userServiceFeignClient;
+    private final ProductServiceFeignClient productServiceFeignClient;
 
     @CacheEvict(value = {"orders"}, allEntries = true)
     public Order create(Order order) {
@@ -59,6 +64,33 @@ public class OrderService {
                 .orElse(null);
     }
 
+    @CacheEvict(value = {"orders"}, allEntries = true)
+    public Order createV3(Order order) {
+        if (order.getQuantity() == null || order.getQuantity() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Quantity must be a positive number"
+            );
+        }
+
+        UserProfile profile = userServiceFeignClient.getUser(order.getUserId());
+        if (profile == null || !profile.active()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "User " + order.getUserId() + " is not active"
+            );
+        }
+
+        Order existing = findDuplicate(order);
+        if (existing != null) {
+            return existing;
+        }
+
+        order.setStatus(OrderStatus.PENDING);
+        order.setProductUpdated(false);
+        return orderRepository.save(order);
+    }
+
     @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
     public Order confirm(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
@@ -74,6 +106,27 @@ public class OrderService {
         }
 
         productClient.updateQuantity(order.getProductId(), order.getQuantity());
+        order.setStatus(OrderStatus.CONFIRMED);
+        order.setProductUpdated(true);
+
+        return orderRepository.save(order);
+    }
+
+    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    public Order confirmV3(Long id) {
+        Order order = orderRepository.findById(id).orElse(null);
+
+        if (order == null) {
+            return null;
+        }
+
+        if (order.getStatus() == OrderStatus.CONFIRMED
+                || order.getStatus() == OrderStatus.REJECTED
+                || order.getStatus() == OrderStatus.CANCELLED) {
+            return order;
+        }
+
+        productServiceFeignClient.updateQuantity(order.getProductId(), order.getQuantity());
         order.setStatus(OrderStatus.CONFIRMED);
         order.setProductUpdated(true);
 

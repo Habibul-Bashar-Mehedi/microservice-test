@@ -86,4 +86,32 @@ public class OrderController {
                 : ResponseEntity.accepted().body(confirmed);
     }
 
+    @PostMapping("/v3/orders")
+    public ResponseEntity<Order> createV3(@Valid @RequestBody Order order) {
+        Order saved = orderService.createV3(order);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(saved.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(saved);
+    }
+
+    @PostMapping("/v3/orders/{id}/confirm")
+    public ResponseEntity<Order> confirmV3(@PathVariable Long id) {
+        Order confirmed = orderService.confirmV3(id);
+
+        return confirmed == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(confirmed);
+    }
+
+    @PostMapping("/v3/orders/{id}/cancel")
+    public ResponseEntity<Order> cancelV3(@PathVariable Long id, @RequestParam Long userId) {
+        Order cancelled = orderService.cancel(id, userId);
+
+        return cancelled == null
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(cancelled);
+    }
+
     }

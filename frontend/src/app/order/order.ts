@@ -6,7 +6,7 @@ import { Title } from '@angular/platform-browser';
 import { API } from '../api-config';
 import { Order } from '../models';
 
-type ApiVersion = 'v1' | 'v2';
+type ApiVersion = 'v1' | 'v2' | 'v3';
 
 const API_VERSION_KEY = 'order-api-version';
 
@@ -30,7 +30,14 @@ export class OrderComponent implements OnInit {
     apiVersion = signal<ApiVersion>(this.loadSavedVersion());
 
     get base() {
-        return this.apiVersion() === 'v1' ? API.orderV1 : API.orderV2;
+        const version = this.apiVersion();
+        if (version === 'v2') {
+            return API.orderV2;
+        }
+        if (version === 'v3') {
+            return API.orderV3;
+        }
+        return API.orderV1;
     }
 
     ngOnInit() {
@@ -57,7 +64,9 @@ export class OrderComponent implements OnInit {
             next: () => {
                 this.message.set(version === 'v2'
                     ? 'Order created (PENDING). User validation happens asynchronously.'
-                    : 'Order created (PENDING).');
+                    : version === 'v3'
+                        ? 'Order created (PENDING) via Feign.'
+                        : 'Order created (PENDING).');
                 this.isError.set(false);
                 this.form = {userId: null, productId: null, quantity: null};
                 this.creating.set(false);
@@ -93,7 +102,7 @@ export class OrderComponent implements OnInit {
 
     private loadSavedVersion(): ApiVersion {
         const saved = localStorage.getItem(API_VERSION_KEY);
-        return saved === 'v2' ? 'v2' : 'v1';
+        return saved === 'v2' || saved === 'v3' ? saved : 'v1';
     }
 
     private fail(err: any) {

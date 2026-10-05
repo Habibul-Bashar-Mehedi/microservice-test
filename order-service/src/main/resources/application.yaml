@@ -41,6 +41,9 @@ spring:
         register-health-check: false
     loadbalancer:
       enabled: true
+    openfeign:
+      circuitbreaker:
+        enabled: true
     function:
       definition: orderCreatedListener;stockUpdatedListener;stockUpdateFailedListener
     stream:
@@ -93,3 +96,30 @@ oauth2:
   admin-emails:
     - admin@example.com
     - habibulbashar102001@gmail.com
+
+# V3 (Feign) circuit breaker - configured via properties.
+# Names match the Feign client names (user-service, product-service).
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+    instances:
+      user-service:
+        baseConfig: default
+      product-service:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+        cancel-running-future: true
+    instances:
+      user-service:
+        baseConfig: default
+      product-service:
+        baseConfig: default

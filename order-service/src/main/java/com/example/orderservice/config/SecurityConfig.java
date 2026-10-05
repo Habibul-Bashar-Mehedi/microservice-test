@@ -37,12 +37,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/v1/orders").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v2/orders").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/v3/orders").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/v1/orders/user/{userId}").hasRole("USER")
                         .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/cancel").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/v1/orders").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/confirm").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v2/orders/{id}/confirm").hasRole("ADMIN")
-                        .requestMatchers("/v1/**", "/v2/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/v3/orders/{id}/confirm").hasRole("ADMIN")
+                        .requestMatchers("/v1/**", "/v2/**", "/v3/**").authenticated()
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
