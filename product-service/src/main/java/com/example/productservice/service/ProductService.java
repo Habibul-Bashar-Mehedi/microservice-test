@@ -24,6 +24,7 @@ public class ProductService {
 
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
     public Product create(Product product, String managerEmail) {
+        validateProductInput(product);
         product.setStatus(ProductStatus.PENDING_MAINTAINER);
         product.setCreatedBy(managerEmail);
         product.setRejectionReason(null);
@@ -81,6 +82,8 @@ public class ProductService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Only rejected products can be resubmitted");
         }
+
+        validateProductInput(updated);
 
         try {
             product.setName(updated.getName());
@@ -181,6 +184,19 @@ public class ProductService {
     private void requireReason(String reason) {
         if (reason == null || reason.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejection reason is required");
+        }
+    }
+
+    private void validateProductInput(Product product) {
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name must not be blank");
+        }
+        if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Price must be greater than 0");
+        }
+        if (product.getAvailableQuantity() == null || product.getAvailableQuantity() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Available quantity cannot be negative");
         }
     }
 
