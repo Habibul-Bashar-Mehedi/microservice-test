@@ -19,4 +19,13 @@
             <heap unit="entries">100</heap>
         </resources>
     </cache>
+
+    <cache alias="ordersWithUser">
+        <expiry>
+            <ttl unit="seconds">30</ttl>
+        </expiry>
+        <resources>
+            <heap unit="entries">100</heap>
+        </resources>
+    </cache>
 </config>

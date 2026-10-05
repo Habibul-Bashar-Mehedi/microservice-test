@@ -46,7 +46,7 @@ public class OrderEventConsumer {
                         event,
                         event.email()
                 );
-                evict("orders");
+                evict("orders", "ordersWithUser");
             } catch (Exception e) {
                 log.error("Unexpected error handling order.created for order {}: {}", event.orderId(), e.getMessage(), e);
                 logClient.recordConsumeFailed(
@@ -100,7 +100,7 @@ public class OrderEventConsumer {
                         event,
                         event.email()
                 );
-                evict("orders", "orderById");
+                evict("orders", "orderById", "ordersWithUser");
             } catch (Exception e) {
                 log.error("Unexpected error handling stock.updated for order {}: {}", event.orderId(), e.getMessage(), e);
                 logClient.recordConsumeFailed(
@@ -153,7 +153,7 @@ public class OrderEventConsumer {
                         event,
                         event.email()
                 );
-                evict("orders", "orderById");
+                evict("orders", "orderById", "ordersWithUser");
             } catch (Exception e) {
                 log.error("Unexpected error handling stock.failed for order {}: {}", event.orderId(), e.getMessage(), e);
                 logClient.recordConsumeFailed(

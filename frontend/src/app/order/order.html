@@ -4,13 +4,15 @@
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / Kafka)</label>
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v3'" (change)="setVersion('v3')"> v3 (Feign)</label>
 
-<h2>Create Order</h2>
-<form (ngSubmit)="create()">
-    <label>User ID <input type="number" name="userId" min="1" [(ngModel)]="form.userId" required></label>
-    <label>Product ID <input type="number" name="productId" min="1" [(ngModel)]="form.productId" required></label>
-    <label>Quantity <input type="number" name="quantity" min="1" [(ngModel)]="form.quantity" required></label>
-    <button type="submit" [disabled]="creating()">Create Order</button>
-</form>
+@if (role === 'ADMIN') {
+    <h2>Create Order</h2>
+    <form (ngSubmit)="create()">
+        <label>User ID <input type="number" name="userId" min="1" [(ngModel)]="form.userId" required></label>
+        <label>Product ID <input type="number" name="productId" min="1" [(ngModel)]="form.productId" required></label>
+        <label>Quantity <input type="number" name="quantity" min="1" [(ngModel)]="form.quantity" required></label>
+        <button type="submit" [disabled]="creating()">Create Order</button>
+    </form>
+}
 <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
 <h2>All Orders</h2>

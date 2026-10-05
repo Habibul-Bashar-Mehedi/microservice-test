@@ -2,6 +2,8 @@ package com.example.productservice.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,4 +43,24 @@ public class Product {
     @NotNull(message = "Available quantity is required")
     @Min(value = 0, message = "Available quantity cannot be negative")
     private Integer availableQuantity;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProductStatus status = ProductStatus.PENDING_MAINTAINER;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "rejected_by_role")
+    private String rejectedByRole;
+
+    @Column(name = "created_by")
+    private String createdBy;
+
+    @Column(name = "maintainer_reviewer")
+    private String maintainerReviewer;
+
+    @Column(name = "admin_reviewer")
+    private String adminReviewer;
 }

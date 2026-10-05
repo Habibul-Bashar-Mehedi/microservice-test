@@ -27,7 +27,7 @@ public class OrderService {
     private final UserServiceFeignClient userServiceFeignClient;
     private final ProductServiceFeignClient productServiceFeignClient;
 
-    @CacheEvict(value = {"orders"}, allEntries = true)
+    @CacheEvict(value = {"orders", "ordersWithUser"}, allEntries = true)
     public Order create(Order order) {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new ResponseStatusException(
@@ -64,7 +64,7 @@ public class OrderService {
                 .orElse(null);
     }
 
-    @CacheEvict(value = {"orders"}, allEntries = true)
+    @CacheEvict(value = {"orders", "ordersWithUser"}, allEntries = true)
     public Order createV3(Order order) {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new ResponseStatusException(
@@ -91,7 +91,7 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders", "orderById", "ordersWithUser"}, allEntries = true)
     public Order confirm(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
 
@@ -112,7 +112,7 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders", "orderById", "ordersWithUser"}, allEntries = true)
     public Order confirmV3(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
 
@@ -133,7 +133,7 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders", "orderById", "ordersWithUser"}, allEntries = true)
     public Order cancel(Long id, Long userId) {
         Order order = orderRepository.findById(id).orElse(null);
 
@@ -171,6 +171,7 @@ public class OrderService {
         return orderRepository.findAllByOrderByIdDesc();
     }
 
+    @Cacheable("ordersWithUser")
     public List<OrderResponse> findAllWithUser() {
         return orderRepository.findAllByOrderByIdDesc().stream()
                 .map(order -> OrderResponse.from(

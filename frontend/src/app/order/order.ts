@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
+import { AuthService } from '../auth.service';
 import { Order } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
@@ -21,6 +22,9 @@ export class OrderComponent implements OnInit {
     private http = inject(HttpClient);
     private title = inject(Title);
     private destroyRef = inject(DestroyRef);
+    private auth = inject(AuthService);
+
+    role = this.auth.getUser()?.role ?? 'USER';
 
     orders = signal<Order[]>([]);
     form = {userId: null as number | null, productId: null as number | null, quantity: null as number | null};

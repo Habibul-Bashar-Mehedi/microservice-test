@@ -4,6 +4,7 @@ import com.example.authservice.config.JwtService;
 import com.example.authservice.entity.AuthUser;
 import com.example.authservice.repository.AuthUserRepository;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
@@ -20,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
+
+    private static final Set<String> ALLOWED_ROLES = Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER");
 
     private final AuthUserRepository authUserRepository;
     private final JwtDecoder googleJwtDecoder;
@@ -139,8 +142,11 @@ public class AuthService {
 
     public void changeRole(String email, String role) {
         String normalized = role == null ? null : role.trim().toUpperCase(Locale.ROOT);
-        if (!"ADMIN".equals(normalized) && !"USER".equals(normalized)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role must be ADMIN or USER");
+        if (normalized == null || !ALLOWED_ROLES.contains(normalized)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Role must be one of " + ALLOWED_ROLES
+            );
         }
 
         AuthUser authUser = authUserRepository.findByEmail(email)

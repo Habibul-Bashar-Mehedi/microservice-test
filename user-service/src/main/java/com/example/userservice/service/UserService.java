@@ -5,6 +5,7 @@ import com.example.userservice.repository.UserRepository;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -23,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final Set<String> ALLOWED_ROLES = Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER");
+
     private final UserRepository userRepository;
     private final RestClient.Builder restClientBuilder;
     private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
@@ -31,7 +34,7 @@ public class UserService {
     private String authServiceBaseUrl;
 
     @Transactional
-    @CacheEvict(value = {"users"}, allEntries = true)
+    @CacheEvict(value = {"users", "userByEmail"}, allEntries = true)
     public User createUser(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new ResponseStatusException(
@@ -59,6 +62,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable("userByEmail")
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -68,7 +72,7 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    @CacheEvict(value = {"users", "userById", "userByEmail"}, allEntries = true)
     public User register(User user) {
         User existing = userRepository.findByEmail(user.getEmail()).orElse(null);
         if (existing != null) {
@@ -81,7 +85,7 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    @CacheEvict(value = {"users", "userById", "userByEmail"}, allEntries = true)
     public User setActive(Long id, boolean active) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -94,7 +98,7 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = {"users", "userById"}, allEntries = true)
+    @CacheEvict(value = {"users", "userById", "userByEmail"}, allEntries = true)
     public User setRole(Long id, String role, String authHeader) {
         String normalized = normalizeRole(role);
 
@@ -159,10 +163,10 @@ public class UserService {
         if (normalized == null) {
             return "USER";
         }
-        if (!"ADMIN".equals(normalized) && !"USER".equals(normalized)) {
+        if (!ALLOWED_ROLES.contains(normalized)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Role must be ADMIN or USER"
+                    "Role must be one of " + ALLOWED_ROLES
             );
         }
         return normalized;

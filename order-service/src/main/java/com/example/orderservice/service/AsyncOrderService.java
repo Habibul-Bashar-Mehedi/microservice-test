@@ -19,7 +19,7 @@ public class AsyncOrderService {
     private final OrderRepository orderRepository;
     private final OrderEventPublisher eventPublisher;
 
-    @CacheEvict(value = {"orders"}, allEntries = true)
+    @CacheEvict(value = {"orders", "ordersWithUser"}, allEntries = true)
     public Order create(Order order) {
         if (order.getQuantity() == null || order.getQuantity() <= 0) {
             throw new ResponseStatusException(
@@ -48,7 +48,7 @@ public class AsyncOrderService {
         return saved;
     }
 
-    @CacheEvict(value = {"orders", "orderById"}, allEntries = true)
+    @CacheEvict(value = {"orders", "orderById", "ordersWithUser"}, allEntries = true)
     public Order confirm(Long id) {
         Order order = orderRepository.findById(id).orElse(null);
 

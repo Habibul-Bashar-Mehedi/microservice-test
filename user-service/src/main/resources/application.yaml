@@ -21,6 +21,12 @@ spring:
     jcache:
       config: classpath:ehcache.xml
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
   datasource:
     url: jdbc:postgresql://localhost:5432/user-service
     username: lemon
@@ -28,7 +34,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:

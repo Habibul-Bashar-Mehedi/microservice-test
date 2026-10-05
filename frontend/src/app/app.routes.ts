@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { adminGuard, authGuard } from './auth.guard';
+import { adminGuard, authGuard, roleGuard } from './auth.guard';
 import { DashboardComponent } from './dashboard/dashboard';
 import { LoginComponent } from './login/login';
 import { UserComponent } from './user/user';
@@ -13,7 +13,7 @@ export const routes: Routes = [
     { path: 'login', component: LoginComponent },
     { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
     { path: 'user', component: UserComponent, canActivate: [authGuard, adminGuard] },
-    { path: 'product', component: ProductComponent, canActivate: [authGuard, adminGuard] },
-    { path: 'order', component: OrderComponent, canActivate: [authGuard, adminGuard] },
+    { path: 'product', component: ProductComponent, canActivate: [authGuard, roleGuard('ADMIN', 'MANAGER', 'MAINTAINER')] },
+    { path: 'order', component: OrderComponent, canActivate: [authGuard, roleGuard('ADMIN', 'MANAGER')] },
     { path: 'log', component: LogComponent, canActivate: [authGuard, adminGuard] }
 ];

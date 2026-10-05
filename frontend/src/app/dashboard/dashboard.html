@@ -8,13 +8,19 @@
     </p>
 }
 
-@if (isAdmin) {
+@if (canManageProducts) {
     <h2>Sections</h2>
     <ul>
-        <li><a routerLink="/user">Manage Users</a></li>
-        <li><a routerLink="/product">Manage Products</a></li>
-        <li><a routerLink="/order">Orders</a></li>
-        <li><a routerLink="/log">Message Logs</a></li>
+        @if (role === 'ADMIN') {
+            <li><a routerLink="/user">Manage Users</a></li>
+        }
+        <li><a routerLink="/product">{{ productLinkLabel }}</a></li>
+        @if (role === 'ADMIN' || role === 'MANAGER') {
+            <li><a routerLink="/order">Orders</a></li>
+        }
+        @if (role === 'ADMIN') {
+            <li><a routerLink="/log">Message Logs</a></li>
+        }
     </ul>
 } @else {
     <div class="store">

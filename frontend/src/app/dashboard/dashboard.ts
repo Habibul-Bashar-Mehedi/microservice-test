@@ -77,8 +77,26 @@ export class DashboardComponent implements OnInit {
         return this.user()?.role === 'ADMIN';
     }
 
+    get role() {
+        return this.user()?.role ?? 'USER';
+    }
+
+    get canManageProducts() {
+        return ['ADMIN', 'MANAGER', 'MAINTAINER'].includes(this.role);
+    }
+
+    get productLinkLabel() {
+        if (this.role === 'MANAGER') {
+            return 'My Products';
+        }
+        if (this.role === 'MAINTAINER') {
+            return 'Review Products';
+        }
+        return 'Manage Products';
+    }
+
     ngOnInit() {
-        if (!this.isAdmin) {
+        if (this.role === 'USER') {
             const email = this.user()?.email;
             if (!email) {
                 return;

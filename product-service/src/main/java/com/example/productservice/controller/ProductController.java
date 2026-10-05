@@ -1,7 +1,10 @@
 package com.example.productservice.controller;
 
 import com.example.productservice.entity.Product;
+import com.example.productservice.entity.ProductNotification;
+import com.example.productservice.entity.ProductStatus;
 import com.example.productservice.service.InsufficientStockException;
+import com.example.productservice.service.ProductNotificationService;
 import com.example.productservice.service.ProductSearchService;
 import com.example.productservice.service.ProductService;
 import jakarta.validation.Valid;
@@ -15,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,11 +37,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductNotificationService productNotificationService;
     private final ProductSearchService productSearchService;
 
     @PostMapping("/v1/products")
-    public ResponseEntity<Product> createV1(@Valid @RequestBody Product product) {
-        Product saved = productService.create(product);
+    public ResponseEntity<Product> createV1(@Valid @RequestBody Product product, Authentication authentication) {
+        Product saved = productService.create(product, authentication.getName());
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(saved.getId())
@@ -46,13 +52,61 @@ public class ProductController {
 
     @GetMapping("/v1/products")
     public List<Product> findAllV1() {
+        return productService.findAllApproved();
+    }
+
+    @GetMapping("/v1/products/all")
+    public List<Product> findAllForAdminV1() {
         return productService.findAll();
+    }
+
+    @GetMapping("/v1/products/mine")
+    public List<Product> findMineV1(Authentication authentication) {
+        return productService.findByCreatedBy(authentication.getName());
+    }
+
+    @GetMapping("/v1/products/pending/maintainer")
+    public List<Product> pendingMaintainerV1() {
+        return productService.findByStatus(ProductStatus.PENDING_MAINTAINER);
+    }
+
+    @GetMapping("/v1/products/pending/admin")
+    public List<Product> pendingAdminV1() {
+        return productService.findByStatus(ProductStatus.PENDING_ADMIN);
+    }
+
+    @PutMapping("/v1/products/{id}")
+    public Product resubmitV1(@PathVariable Long id, @Valid @RequestBody Product product,
+            Authentication authentication) {
+        return productService.resubmit(id, product, authentication.getName());
+    }
+
+    @PostMapping("/v1/products/{id}/maintainer/review")
+    public Product maintainerReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
+            Authentication authentication) {
+        return productService.maintainerReview(id, authentication.getName(), request.approved(), request.reason());
+    }
+
+    @PostMapping("/v1/products/{id}/admin/review")
+    public Product adminReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
+            Authentication authentication) {
+        return productService.adminReview(id, authentication.getName(), request.approved(), request.reason());
+    }
+
+    @GetMapping("/v1/notifications")
+    public List<ProductNotification> notificationsV1(Authentication authentication) {
+        return productNotificationService.findByRecipient(authentication.getName(), currentRole(authentication));
+    }
+
+    @PostMapping("/v1/notifications/{id}/read")
+    public void markNotificationReadV1(@PathVariable Long id) {
+        productNotificationService.markRead(id);
     }
 
     @GetMapping("/v1/products/search")
     public List<Product> searchV1(@RequestParam(name = "q", defaultValue = "") String q) {
         if (q == null || q.isBlank()) {
-            return productService.findAll();
+            return productService.findAllApproved();
         }
         return productSearchService.search(q.trim())
                 .stream()
@@ -126,5 +180,17 @@ public class ProductController {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<String> duplicateProduct(DataIntegrityViolationException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body("Product with that name already exists");
+    }
+
+    private String currentRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .findFirst()
+                .orElse("USER");
+    }
+
+    public record ReviewRequest(boolean approved, String reason) {
     }
 }

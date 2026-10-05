@@ -31,11 +31,12 @@
                 <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
                 <td>{{ u.role }}</td>
                 <td>
-                    @if (u.role === 'ADMIN') {
-                        <button type="button" (click)="changeRole(u, 'USER')">Make User</button>
-                    } @else {
-                        <button type="button" (click)="changeRole(u, 'ADMIN')">Make Admin</button>
-                    }
+                    <select [ngModel]="selectedRole[u.id] || u.role" (ngModelChange)="selectedRole[u.id] = $event" [name]="'role-' + u.id">
+                        @for (r of roles; track r) {
+                            <option [value]="r">{{ r }}</option>
+                        }
+                    </select>
+                    <button type="button" (click)="changeRole(u, selectedRole[u.id] || u.role)">Set Role</button>
                 </td>
                 <td>
                     @if (u.active) {

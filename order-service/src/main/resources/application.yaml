@@ -68,13 +68,19 @@ spring:
           brokers: localhost:9092
           auto-create-topics: true
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
   datasource:
     url: jdbc:postgresql://localhost:5432/order-service
     username: lemon
     password: lemon
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:

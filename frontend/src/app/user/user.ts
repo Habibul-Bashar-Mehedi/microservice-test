@@ -19,6 +19,8 @@ export class UserComponent implements OnInit {
 
     users = signal<User[]>([]);
     form = {name: '', email: ''};
+    roles = ['USER', 'ADMIN', 'MANAGER', 'MAINTAINER'];
+    selectedRole: Record<number, string> = {};
     message = signal('');
     isError = signal(false);
 
@@ -64,7 +66,7 @@ export class UserComponent implements OnInit {
     changeRole(u: User, role: string) {
         this.http.patch<User>(this.base + '/users/' + u.id + '/role', {role}).subscribe({
             next: () => {
-                this.message.set(role === 'ADMIN' ? 'User is now an admin.' : 'User is now a general user.');
+                this.message.set(u.name + ' is now ' + role + '.');
                 this.isError.set(false);
                 this.load();
             },

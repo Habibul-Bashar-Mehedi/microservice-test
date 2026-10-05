@@ -11,6 +11,23 @@ export interface Product {
     name: string;
     price: number;
     availableQuantity: number;
+    status?: string;
+    rejectionReason?: string | null;
+    rejectedByRole?: string | null;
+    createdBy?: string | null;
+    maintainerReviewer?: string | null;
+    adminReviewer?: string | null;
+}
+
+export interface ProductNotification {
+    id: number;
+    productId: number;
+    productName: string;
+    recipientEmail: string | null;
+    recipientRole: string | null;
+    message: string;
+    createdAt: string;
+    read: boolean;
 }
 
 export interface Order {
