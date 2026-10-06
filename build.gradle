@@ -1,0 +1,40 @@
+plugins {
+    id 'jacoco'
+}
+
+repositories {
+    mavenCentral()
+}
+
+jacoco {
+    toolVersion = '0.8.15'
+}
+
+ext.serviceDirs = ['auth-service', 'user-service', 'product-service', 'order-service', 'log-service']
+
+// Aggregates the per-service JaCoCo execution data into a single report.
+// Run the services' tests first (or use ./jacoco-aggregate.sh).
+tasks.register('jacocoAggregateReport', JacocoReport) {
+    group = 'verification'
+    description = 'Generates one aggregated JaCoCo coverage report across all microservices.'
+
+    executionData.setFrom(
+            serviceDirs.collect { file("${it}/build/jacoco/test.exec") })
+
+    classDirectories.setFrom(files(
+            serviceDirs.collect {
+                fileTree("${it}/build/classes/java/main") { include '**/*.class' }
+            }))
+
+    sourceDirectories.setFrom(files(
+            serviceDirs.collect { "${it}/src/main/java" }))
+
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/aggregate/html')
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/aggregate/jacoco.xml')
+        csv.outputLocation = layout.buildDirectory.file('reports/jacoco/aggregate/jacoco.csv')
+    }
+}
