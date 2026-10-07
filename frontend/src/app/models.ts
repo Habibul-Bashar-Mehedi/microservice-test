@@ -11,6 +11,7 @@ export interface Product {
     name: string;
     price: number;
     availableQuantity: number;
+    category?: string;
     status?: string;
     rejectionReason?: string | null;
     rejectedByRole?: string | null;

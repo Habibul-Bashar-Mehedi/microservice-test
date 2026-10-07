@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, inject, signal, ViewChild } from 
 import { Router } from '@angular/router';
 
 import { AuthService } from '../auth.service';
+import { homePathFor } from '../auth.guard';
 import { GOOGLE_CLIENT_ID } from '../api-config';
 
 declare global {
@@ -63,7 +64,7 @@ export class LoginComponent implements AfterViewInit {
             next: (res) => {
                 this.auth.setSession(res);
                 this.isError.set(false);
-                this.router.navigate(['/dashboard']);
+                this.router.navigate([homePathFor(this.auth.getUser()?.role)]);
             },
             error: (err) => this.fail(err)
         });

@@ -1,0 +1,59 @@
+<h1>My Cart</h1>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+@if (cartItems().length === 0) {
+    <p>Your cart is empty.</p>
+} @else {
+    <table>
+        <thead>
+        <tr>
+            <th>
+                <label><input
+                    type="checkbox"
+                    [checked]="cart.isAllSelected()"
+                    (change)="cart.setAllSelected($any($event.target).checked)"
+                > All</label>
+            </th>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Subtotal</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (item of cartItems(); track item.productId) {
+                <tr>
+                    <td>
+                        <input
+                            type="checkbox"
+                            [checked]="item.selected"
+                            (change)="cart.toggleSelected(item.productId)"
+                        >
+                    </td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>
+                        <input
+                            type="number"
+                            min="1"
+                            [max]="item.availableQuantity"
+                            [value]="item.quantity"
+                            (change)="updateCartQuantity(item.productId, $event)"
+                        >
+                    </td>
+                    <td>{{ item.price * item.quantity }}</td>
+                    <td>
+                        <button type="button" (click)="removeFromCart(item.productId)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p><strong>Selected Total: {{ selectedTotal() }}</strong></p>
+    <button
+        type="button"
+        (click)="checkout()"
+        [disabled]="checkingOut() || selectedCount() === 0"
+    >Checkout Selected</button>
+}

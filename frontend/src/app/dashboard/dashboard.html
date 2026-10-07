@@ -1,189 +1,41 @@
 <h1>Dashboard</h1>
 
-@if (user(); as u) {
-    <h2>Welcome, {{ u.name }}!</h2>
-    <p>
-        <strong>Email:</strong> {{ u.email }}<br>
-        <strong>Role:</strong> {{ u.role }}
-    </p>
-}
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
-@if (canManageProducts) {
-    <h2>Sections</h2>
-    <ul>
-        @if (role === 'ADMIN') {
-            <li><a routerLink="/user">Manage Users</a></li>
+<h2>Product List</h2>
+<button type="button" (click)="loadProducts()">Refresh</button>
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Available Quantity</th>
+        <th>Order Quantity</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+        @for (p of products(); track p.id) {
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.price }}</td>
+                <td>{{ p.availableQuantity }}</td>
+                <td>
+                    <input
+                        type="number"
+                        min="1"
+                        [max]="p.availableQuantity"
+                        name="quantity-{{ p.id }}"
+                        [(ngModel)]="quantities[p.id]"
+                    >
+                </td>
+                <td>
+                    <button type="button" (click)="addToCart(p)">Add to Cart</button>
+                    <button type="button" (click)="placeOrder(p)" [disabled]="placing()">Order Now</button>
+                </td>
+            </tr>
         }
-        <li><a routerLink="/product">{{ productLinkLabel }}</a></li>
-        @if (role === 'ADMIN' || role === 'MANAGER') {
-            <li><a routerLink="/order">Orders</a></li>
-        }
-        @if (role === 'ADMIN') {
-            <li><a routerLink="/log">Message Logs</a></li>
-        }
-    </ul>
-} @else {
-    <div class="store">
-        <section class="store-products">
-            <h2>API Version</h2>
-            <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v1'" (change)="setVersion('v1')"> v1 (sync)</label>
-            <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / Kafka)</label>
-            <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v3'" (change)="setVersion('v3')"> v3 (Feign)</label>
-
-            <h2>Available Products</h2>
-            <button type="button" (click)="loadProducts()">Refresh</button>
-            <input
-                type="search"
-                name="product-search"
-                placeholder="Search products..."
-                [(ngModel)]="searchQuery"
-                (keyup.enter)="search()"
-            >
-            <button type="button" (click)="search()">Search</button>
-            <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-            <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Price</th>
-                    <th>Available Quantity</th>
-                    <th>Order Quantity</th>
-                    <th>Action</th>
-                </tr>
-                </thead>
-                <tbody>
-                    @for (p of products(); track p.id) {
-                        <tr>
-                            <td>{{ p.id }}</td>
-                            <td>{{ p.name }}</td>
-                            <td>{{ p.price }}</td>
-                            <td>{{ p.availableQuantity }}</td>
-                            <td>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    [max]="p.availableQuantity"
-                                    name="quantity-{{ p.id }}"
-                                    [(ngModel)]="quantities[p.id]"
-                                >
-                            </td>
-                            <td>
-                                <button
-                                    type="button"
-                                    (click)="addToCart(p)"
-                                >Add to Cart</button>
-                                <button
-                                    type="button"
-                                    (click)="placeOrder(p)"
-                                    [disabled]="placing()"
-                                >Order Now</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </section>
-
-        <aside class="store-cart">
-            <h2>My Cart</h2>
-            @if (cartItems().length === 0) {
-                <p>Your cart is empty.</p>
-            } @else {
-                <table>
-                    <thead>
-                    <tr>
-                        <th>
-                            <label><input
-                                type="checkbox"
-                                [checked]="cart.isAllSelected()"
-                                (change)="cart.setAllSelected($any($event.target).checked)"
-                            > All</label>
-                        </th>
-                        <th>Product</th>
-                        <th>Price</th>
-                        <th>Quantity</th>
-                        <th>Subtotal</th>
-                        <th>Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        @for (item of cartItems(); track item.productId) {
-                            <tr>
-                                <td>
-                                    <input
-                                        type="checkbox"
-                                        [checked]="item.selected"
-                                        (change)="cart.toggleSelected(item.productId)"
-                                    >
-                                </td>
-                                <td>{{ item.name }}</td>
-                                <td>{{ item.price }}</td>
-                                <td>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        [max]="item.availableQuantity"
-                                        [value]="item.quantity"
-                                        (change)="updateCartQuantity(item.productId, $event)"
-                                    >
-                                </td>
-                                <td>{{ item.price * item.quantity }}</td>
-                                <td>
-                                    <button type="button" (click)="removeFromCart(item.productId)">Remove</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <p><strong>Selected Total: {{ selectedTotal() }}</strong></p>
-                <button
-                    type="button"
-                    (click)="checkout()"
-                    [disabled]="checkingOut() || selectedCount() === 0"
-                >Checkout Selected</button>
-            }
-
-            <h2>My Orders</h2>
-            <button type="button" (click)="loadOrders()">Refresh</button>
-            @if (orders().length === 0) {
-                <p>You have no orders yet.</p>
-            } @else {
-                <table>
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Product</th>
-                        <th>Quantity</th>
-                        <th>Status</th>
-                        <th>Product Updated</th>
-                        <th>Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        @for (o of orders(); track o.id) {
-                            <tr>
-                                <td>{{ o.id }}</td>
-                                <td>{{ productName(o.productId) ?? o.productId }}</td>
-                                <td>{{ o.quantity }}</td>
-                                <td>{{ o.status }}</td>
-                                <td>{{ o.productUpdated }}</td>
-                                <td>
-                                    @if (canCancel(o.status)) {
-                                        <button
-                                            type="button"
-                                            (click)="cancelOrder(o)"
-                                            [disabled]="cancelling()"
-                                        >Cancel</button>
-                                    } @else if (o.status === 'CONFIRMED') {
-                                        <span>Confirmed</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-        </aside>
-    </div>
-}
+    </tbody>
+</table>

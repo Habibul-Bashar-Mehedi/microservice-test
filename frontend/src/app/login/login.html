@@ -1,5 +1,21 @@
-<h1>Login</h1>
+<section class="login-page">
+    <div class="login-card">
+        <header class="login-brand">
+            <div class="login-logo" aria-hidden="true">M</div>
+            <h1>Welcome Back</h1>
+            <p class="login-subtitle">Sign in to <strong>Microservice UI</strong> to continue</p>
+        </header>
 
-<div #googleButton></div>
+        <div class="login-divider"><span>Continue with</span></div>
 
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+        <div class="google-button-wrap">
+            <div #googleButton class="google-button"></div>
+        </div>
+
+        @if (message()) {
+            <p class="message" [class.error]="isError()" [class.success]="!isError()">{{ message() }}</p>
+        }
+
+        <p class="login-footer">Authorized access only. Securely signed in with your Google account.</p>
+    </div>
+</section>

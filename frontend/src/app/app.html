@@ -1,17 +1,60 @@
-<h1>{{ title }}</h1>
-<nav>
+<nav class="navbar">
+    <div class="navbar-brand">{{ title }}</div>
     @if (isAuthenticated) {
-        <a routerLink="/dashboard">Dashboard</a> |
-        @if (isAdmin) {
-            <a routerLink="/user">User</a> |
-            <a routerLink="/product">Product</a> |
-            <a routerLink="/order">Order</a> |
-            <a routerLink="/log">Log</a> |
-        }
-        <button type="button" (click)="logout()">Logout</button>
+        <div class="navbar-links">
+            @for (item of navItems; track item.link) {
+                <a [routerLink]="item.link" routerLinkActive="active">{{ item.label }}</a>
+            }
+        </div>
+        <div class="navbar-right">
+            @if (showSearch) {
+                <div class="navbar-search">
+                    <input
+                        type="search"
+                        name="nav-search"
+                        [placeholder]="searchPlaceholder"
+                        autocomplete="off"
+                        [(ngModel)]="navSearch"
+                        (ngModelChange)="onSearchInput()"
+                        (keyup.enter)="submitSearch()"
+                        (focus)="onSearchInput()"
+                        (blur)="hideSuggestions()"
+                    >
+                    <button type="button" (click)="submitSearch()">Search</button>
+                    @if (showSuggestions() && suggestions().length > 0) {
+                        <ul class="navbar-suggestions">
+                            @for (s of suggestions(); track s.label + s.sub) {
+                                <li>
+                                    <button type="button" (mousedown)="selectSuggestion(s)">
+                                        {{ s.label }} <span class="suggestion-sub">{{ s.sub }}</span>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+            <div class="navbar-account">
+                <button type="button" class="navbar-account-btn" (click)="toggleAccount()">
+                    {{ user?.name }} &#9662;
+                </button>
+                @if (accountOpen()) {
+                    <div class="navbar-account-menu">
+                        <p class="account-name">{{ user?.name }}</p>
+                        <p class="account-email">{{ user?.email }}</p>
+                        <p class="account-role">Role: {{ user?.role }}</p>
+                        <button type="button" class="navbar-logout" (click)="logout()">Logout</button>
+                    </div>
+                }
+            </div>
+        </div>
     } @else {
-        <a routerLink="/login">Login</a>
+        <div class="navbar-links">
+            <a routerLink="/login">Login</a>
+        </div>
     }
 </nav>
+
+<app-confirm-dialog />
 
 <router-outlet />

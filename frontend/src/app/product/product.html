@@ -1,48 +1,44 @@
-<h1>Products</h1>
-<p><strong>Role:</strong> {{ role }}</p>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-
-@if (notifications().length > 0) {
-    <h2>Notifications</h2>
-    <button type="button" (click)="loadNotifications()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Message</th>
-            <th>Status</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (n of notifications(); track n.id) {
-                <tr>
-                    <td>{{ n.id }}</td>
-                    <td>{{ n.productName }}</td>
-                    <td [style.fontWeight]="n.read ? 'normal' : 'bold'">{{ n.message }}</td>
-                    <td>{{ n.read ? 'Read' : 'Unread' }}</td>
-                    <td>
-                        @if (!n.read) {
-                            <button type="button" (click)="markRead(n)">Mark read</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+@if (feature === 'add' && role === 'MANAGER') {
+    <h1>Add Product</h1>
+} @else if (feature === 'list') {
+    <h1>Product List</h1>
+} @else if (feature === 'pending') {
+    <h1>Pending Approvals</h1>
+} @else if (feature === 'stock') {
+    <h1>{{ role === 'MAINTAINER' ? 'Stock Management' : 'All Products' }}</h1>
 }
 
-@if (role === 'MANAGER') {
-    <h2>Create Product</h2>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+@if (feature !== 'add') {
+    <div class="sort-bar">
+        <label>Sort
+            <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" name="product-sort">
+                <option value="">Default</option>
+                <option value="out-of-stock">Out of Stock</option>
+                <option value="low-stock">Low Stock (&lt; 10)</option>
+            </select>
+        </label>
+    </div>
+}
+
+@if (feature === 'add' && role === 'MANAGER') {
     <form (ngSubmit)="create()">
         <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
         <label>Price <input type="number" name="price" step="0.01" min="0" [(ngModel)]="form.price" required></label>
         <label>Available Quantity <input type="number" name="availableQuantity" min="0" [(ngModel)]="form.availableQuantity" required></label>
+        <label>Category
+            <select name="category" [(ngModel)]="form.category">
+                @for (c of categories; track c) {
+                    <option [value]="c">{{ c }}</option>
+                }
+            </select>
+        </label>
         <button type="submit">Submit for Review</button>
     </form>
+}
 
-    <h2>My Products</h2>
+@if (feature === 'list' && role === 'MANAGER') {
     <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
@@ -51,13 +47,14 @@
             <th>Name</th>
             <th>Price</th>
             <th>Available</th>
+            <th>Category</th>
             <th>Status</th>
             <th>Rejection Reason</th>
             <th>Action</th>
         </tr>
         </thead>
         <tbody>
-            @for (p of products(); track p.id) {
+            @for (p of filteredList(); track p.id) {
                 <tr>
                     <td>{{ p.id }}</td>
                     <td>
@@ -81,6 +78,17 @@
                             {{ p.availableQuantity }}
                         }
                     </td>
+                    <td>
+                        @if (edits[p.id]) {
+                            <select [name]="'edit-category-' + p.id" [(ngModel)]="edits[p.id].category">
+                                @for (c of categories; track c) {
+                                    <option [value]="c">{{ c }}</option>
+                                }
+                            </select>
+                        } @else {
+                            {{ p.category ?? 'OTHER' }}
+                        }
+                    </td>
                     <td>{{ p.status }}</td>
                     <td>{{ p.rejectionReason ?? '—' }}</td>
                     <td>
@@ -100,8 +108,7 @@
     </table>
 }
 
-@if (role === 'MAINTAINER') {
-    <h2>Products Pending Review</h2>
+@if (feature === 'list' && role === 'MAINTAINER') {
     <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
@@ -110,24 +117,78 @@
             <th>Name</th>
             <th>Price</th>
             <th>Available</th>
+            <th>Category</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (p of filteredList(); track p.id) {
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.availableQuantity }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (feature === 'pending' && role === 'MANAGER') {
+    <button type="button" (click)="load()">Refresh</button>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Category</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (p of managerPending(); track p.id) {
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
+                    <td>{{ p.status }}</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (feature === 'pending' && role === 'MAINTAINER') {
+    <button type="button" (click)="load()">Refresh</button>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Available</th>
+            <th>Category</th>
             <th>Created By</th>
             <th>Reason</th>
             <th>Action</th>
         </tr>
         </thead>
         <tbody>
-            @for (p of products(); track p.id) {
+            @for (p of filteredPending(); track p.id) {
                 <tr>
                     <td>{{ p.id }}</td>
                     <td>{{ p.name }}</td>
                     <td>{{ p.price }}</td>
                     <td>{{ p.availableQuantity }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
                     <td>{{ p.createdBy }}</td>
                     <td>
                         <input type="text" [name]="'m-reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Rejection reason">
                     </td>
                     <td>
-                        <button type="button" (click)="maintainerReview(p, true)">Accept</button>
+                        <button type="button" (click)="maintainerReview(p, true)">Approve</button>
                         <button type="button" (click)="maintainerReview(p, false)">Reject</button>
                     </td>
                 </tr>
@@ -136,8 +197,7 @@
     </table>
 }
 
-@if (role === 'ADMIN') {
-    <h2>Products Pending Final Approval</h2>
+@if (feature === 'pending' && role === 'ADMIN') {
     <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
@@ -146,6 +206,7 @@
             <th>Name</th>
             <th>Price</th>
             <th>Available</th>
+            <th>Category</th>
             <th>Manager</th>
             <th>Maintainer</th>
             <th>Reason</th>
@@ -153,12 +214,13 @@
         </tr>
         </thead>
         <tbody>
-            @for (p of pending(); track p.id) {
+            @for (p of filteredPending(); track p.id) {
                 <tr>
                     <td>{{ p.id }}</td>
                     <td>{{ p.name }}</td>
                     <td>{{ p.price }}</td>
                     <td>{{ p.availableQuantity }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
                     <td>{{ p.createdBy }}</td>
                     <td>{{ p.maintainerReviewer }}</td>
                     <td>
@@ -172,8 +234,10 @@
             }
         </tbody>
     </table>
+}
 
-    <h2>All Products</h2>
+@if (feature === 'stock' && role === 'MAINTAINER') {
+    <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
         <tr>
@@ -181,6 +245,33 @@
             <th>Name</th>
             <th>Price</th>
             <th>Available</th>
+            <th>Category</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (p of filteredStock(); track p.id) {
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.availableQuantity }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (feature === 'stock' && role === 'ADMIN') {
+    <button type="button" (click)="load()">Refresh</button>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Available</th>
+            <th>Category</th>
             <th>Status</th>
             <th>Add Stock</th>
             <th>Update Price</th>
@@ -188,12 +279,13 @@
         </tr>
         </thead>
         <tbody>
-            @for (p of products(); track p.id) {
+            @for (p of filteredStock(); track p.id) {
                 <tr>
                     <td>{{ p.id }}</td>
                     <td>{{ p.name }}</td>
                     <td>{{ p.price }}</td>
                     <td>{{ p.availableQuantity }}</td>
+                    <td>{{ p.category ?? 'OTHER' }}</td>
                     <td>{{ p.status }}</td>
                     <td>
                         <input type="number" min="1" [name]="'add-stock-' + p.id" [(ngModel)]="amounts[p.id]" placeholder="Qty">

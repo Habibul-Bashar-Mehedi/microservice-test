@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/v3/orders").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/v1/orders/user/{userId}").hasRole("USER")
                         .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/cancel").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/v1/orders").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.GET, "/v1/orders").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
                         .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.POST, "/v2/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.POST, "/v3/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")

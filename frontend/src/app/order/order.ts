@@ -1,13 +1,17 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
+import { ConfirmService } from '../confirm-dialog/confirm.service';
 import { Order } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
+
+type OrderFeature = 'create' | 'list';
 
 const API_VERSION_KEY = 'order-api-version';
 
@@ -20,18 +24,43 @@ const API_VERSION_KEY = 'order-api-version';
 export class OrderComponent implements OnInit {
 
     private http = inject(HttpClient);
+    private route = inject(ActivatedRoute);
     private title = inject(Title);
     private destroyRef = inject(DestroyRef);
     private auth = inject(AuthService);
+    private confirmDialog = inject(ConfirmService);
 
     role = this.auth.getUser()?.role ?? 'USER';
+    feature: OrderFeature = 'list';
 
     orders = signal<Order[]>([]);
+    filter = signal('');
+    filteredOrders = computed(() => {
+        const q = this.filter();
+        const base = q
+            ? this.orders().filter(o =>
+                String(o.id).includes(q) ||
+                o.userName?.toLowerCase().includes(q) ||
+                o.userEmail?.toLowerCase().includes(q) ||
+                o.status?.toLowerCase().includes(q) ||
+                String(o.userId).includes(q) ||
+                String(o.productId).includes(q))
+            : this.orders();
+        return [...base].sort((a, b) => b.id - a.id);
+    });
     form = {userId: null as number | null, productId: null as number | null, quantity: null as number | null};
     message = signal('');
     isError = signal(false);
     creating = signal(false);
     apiVersion = signal<ApiVersion>(this.loadSavedVersion());
+
+    get canCreate() {
+        return this.role === 'ADMIN';
+    }
+
+    get canConfirm() {
+        return this.role === 'ADMIN' || this.role === 'MANAGER';
+    }
 
     get base() {
         const version = this.apiVersion();
@@ -45,20 +74,29 @@ export class OrderComponent implements OnInit {
     }
 
     ngOnInit() {
+        this.feature = (this.route.snapshot.data['feature'] as OrderFeature) ?? 'list';
         this.title.setTitle('Orders - Microservice UI');
-        this.load();
-        const timer = setInterval(() => this.load(), 5000);
-        this.destroyRef.onDestroy(() => clearInterval(timer));
+        this.route.queryParamMap.subscribe(params => this.filter.set((params.get('q') ?? '').trim().toLowerCase()));
+        if (this.feature === 'list') {
+            this.load();
+            const timer = setInterval(() => this.load(), 5000);
+            this.destroyRef.onDestroy(() => clearInterval(timer));
+        }
     }
 
     setVersion(version: ApiVersion) {
         this.apiVersion.set(version);
         localStorage.setItem(API_VERSION_KEY, version);
-        this.load();
+        if (this.feature === 'list') {
+            this.load();
+        }
     }
 
-    create() {
+    async create() {
         if (this.creating()) {
+            return;
+        }
+        if (!(await this.confirmDialog.ask('Are you sure you want to create this order?'))) {
             return;
         }
 
@@ -74,7 +112,6 @@ export class OrderComponent implements OnInit {
                 this.isError.set(false);
                 this.form = {userId: null, productId: null, quantity: null};
                 this.creating.set(false);
-                this.load();
             },
             error: (err) => {
                 this.creating.set(false);
@@ -83,7 +120,10 @@ export class OrderComponent implements OnInit {
         });
     }
 
-    confirm(id: number) {
+    async confirm(id: number) {
+        if (!(await this.confirmDialog.ask('Are you sure you want to confirm this order?'))) {
+            return;
+        }
         const version = this.apiVersion();
         this.http.post<Order>(this.base + '/orders/' + id + '/confirm', {}).subscribe({
             next: () => {

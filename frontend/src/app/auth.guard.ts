@@ -34,5 +34,34 @@ export const roleGuard = (...roles: string[]): CanActivateFn => () => {
         return true;
     }
 
-    return router.createUrlTree(['/dashboard']);
+    return router.createUrlTree([homePathFor(role)]);
+};
+
+export function homePathFor(role: string | undefined): string {
+    switch (role) {
+        case 'MANAGER':
+            return '/product/add';
+        case 'MAINTAINER':
+            return '/product/pending';
+        case 'ADMIN':
+            return '/product/pending';
+        default:
+            return '/dashboard';
+    }
+}
+
+export const dashboardGuard: CanActivateFn = () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+
+    if (!auth.isAuthenticated()) {
+        return router.createUrlTree(['/login']);
+    }
+
+    const role = auth.getUser()?.role;
+    if (role === 'ADMIN' || role === 'MANAGER' || role === 'MAINTAINER') {
+        return router.createUrlTree([homePathFor(role)]);
+    }
+
+    return true;
 };

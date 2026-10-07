@@ -3,14 +3,6 @@
 
 <button type="button" (click)="load()">Refresh</button>
 <button type="button" (click)="clearAll()" [disabled]="clearing()">Clear All Logs</button>
-<input
-    type="search"
-    name="log-search"
-    placeholder="Search logs..."
-    [(ngModel)]="searchQuery"
-    (keyup.enter)="search()"
->
-<button type="button" (click)="search()">Search</button>
 <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
 <label>Service

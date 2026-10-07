@@ -1,11 +1,15 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
-import { Product, ProductNotification } from '../models';
+import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { Product } from '../models';
+
+type ProductFeature = 'add' | 'list' | 'pending' | 'stock';
 
 @Component({
     selector: 'app-product',
@@ -16,20 +20,34 @@ import { Product, ProductNotification } from '../models';
 export class ProductComponent implements OnInit {
 
     private http = inject(HttpClient);
+    private route = inject(ActivatedRoute);
     private title = inject(Title);
     private auth = inject(AuthService);
+    private confirmDialog = inject(ConfirmService);
 
     role = this.auth.getUser()?.role ?? 'USER';
+    feature: ProductFeature = 'list';
 
-    products = signal<Product[]>([]);
+    list = signal<Product[]>([]);
     pending = signal<Product[]>([]);
-    notifications = signal<ProductNotification[]>([]);
-    form = {name: '', price: null as number | null, availableQuantity: null as number | null};
+    stock = signal<Product[]>([]);
+    filter = signal('');
+    sort = signal('');
+
+    filteredList = computed(() => this.applyView(this.list()));
+    filteredPending = computed(() => this.applyView(this.pending()));
+    filteredStock = computed(() => this.applyView(this.stock()));
+
+    managerPending = computed(() => this.applyView(this.list()).filter(p =>
+        p.status === 'PENDING_MAINTAINER' || p.status === 'PENDING_ADMIN'));
+
+    categories = ['OTHER', 'CHAL', 'DAL', 'ATA', 'MOYDA', 'CHINI', 'MOSHLA'];
+    form = {name: '', price: null as number | null, availableQuantity: null as number | null, category: 'OTHER'};
     amounts: Record<number, number> = {};
     prices: Record<number, number> = {};
     names: Record<number, string> = {};
     reasons: Record<number, string> = {};
-    edits: Record<number, {name: string; price: number | null; availableQuantity: number | null}> = {};
+    edits: Record<number, {name: string; price: number | null; availableQuantity: number | null; category: string}> = {};
     message = signal('');
     isError = signal(false);
 
@@ -38,21 +56,52 @@ export class ProductComponent implements OnInit {
     }
 
     ngOnInit() {
+        this.feature = (this.route.snapshot.data['feature'] as ProductFeature) ?? 'list';
         this.title.setTitle('Products - Microservice UI');
+        this.route.queryParamMap.subscribe(params => this.filter.set((params.get('q') ?? '').trim().toLowerCase()));
         this.load();
-        this.loadNotifications();
+    }
+
+    private applyFilter(items: Product[]): Product[] {
+        const q = this.filter();
+        if (!q) {
+            return items;
+        }
+        return items.filter(p => p.name?.toLowerCase().includes(q));
+    }
+
+    private applyView(items: Product[]): Product[] {
+        const filtered = this.applyFilter(items);
+        let result = filtered;
+        if (this.sort() === 'out-of-stock') {
+            result = filtered.filter(p => p.availableQuantity === 0);
+        } else if (this.sort() === 'low-stock') {
+            result = filtered.filter(p => p.availableQuantity < 10);
+        }
+        return [...result].sort((a, b) => b.id - a.id);
     }
 
     load() {
-        if (this.role === 'MANAGER') {
-            this.get(this.base + '/products/mine', this.products);
-        } else if (this.role === 'MAINTAINER') {
-            this.get(this.base + '/products/pending/maintainer', this.products);
-        } else if (this.role === 'ADMIN') {
-            this.get(this.base + '/products/pending/admin', this.pending);
-            this.get(this.base + '/products/all', this.products);
-        } else {
-            this.get(this.base + '/products', this.products);
+        if (this.feature === 'list') {
+            if (this.role === 'MANAGER') {
+                this.get(this.base + '/products/mine', this.list);
+            } else {
+                this.get(this.base + '/products', this.list);
+            }
+        } else if (this.feature === 'pending') {
+            if (this.role === 'MANAGER') {
+                this.get(this.base + '/products/mine', this.list);
+            } else if (this.role === 'MAINTAINER') {
+                this.get(this.base + '/products/pending/maintainer', this.pending);
+            } else {
+                this.get(this.base + '/products/pending/admin', this.pending);
+            }
+        } else if (this.feature === 'stock') {
+            if (this.role === 'MAINTAINER') {
+                this.get(this.base + '/products', this.stock);
+            } else {
+                this.get(this.base + '/products/all', this.stock);
+            }
         }
     }
 
@@ -63,20 +112,17 @@ export class ProductComponent implements OnInit {
         });
     }
 
-    loadNotifications() {
-        this.http.get<ProductNotification[]>(this.base + '/notifications').subscribe({
-            next: (data) => this.notifications.set(data),
-            error: (err) => this.fail(err)
-        });
-    }
-
-    create() {
+    async create() {
+        if (!(await this.confirmDialog.ask('Are you sure you want to create this product?'))) {
+            return;
+        }
         this.http.post<Product>(this.base + '/products', this.form).subscribe({
-            next: () => {
-                this.message.set('Product created and sent to the maintainer for review.');
+            next: (created) => {
+                this.message.set(created.status === 'APPROVED'
+                    ? 'Product created and approved automatically.'
+                    : 'Product created and sent to the maintainer for review.');
                 this.isError.set(false);
-                this.form = {name: '', price: null, availableQuantity: null};
-                this.load();
+                this.form = {name: '', price: null, availableQuantity: null, category: 'OTHER'};
             },
             error: (err) => this.fail(err)
         });
@@ -86,18 +132,24 @@ export class ProductComponent implements OnInit {
         this.edits[product.id] = {
             name: product.name,
             price: product.price,
-            availableQuantity: product.availableQuantity
+            availableQuantity: product.availableQuantity,
+            category: product.category ?? 'OTHER'
         };
     }
 
-    resubmit(product: Product) {
+    async resubmit(product: Product) {
         const edit = this.edits[product.id];
         if (!edit) {
             return;
         }
+        if (!(await this.confirmDialog.ask('Are you sure you want to resubmit this product?'))) {
+            return;
+        }
         this.http.put<Product>(this.base + '/products/' + product.id, edit).subscribe({
-            next: () => {
-                this.message.set('Product ' + product.id + ' resubmitted to the maintainer.');
+            next: (updated) => {
+                this.message.set(updated.status === 'APPROVED'
+                    ? 'Product ' + product.id + ' resubmitted and approved automatically.'
+                    : 'Product ' + product.id + ' resubmitted to the maintainer.');
                 this.isError.set(false);
                 delete this.edits[product.id];
                 this.load();
@@ -106,33 +158,42 @@ export class ProductComponent implements OnInit {
         });
     }
 
-    maintainerReview(product: Product, approved: boolean) {
+    async maintainerReview(product: Product, approved: boolean) {
         const reason = this.reasons[product.id];
         if (!approved && (!reason || !reason.trim())) {
             this.message.set('A rejection reason is required.');
             this.isError.set(true);
             return;
         }
+        const action = approved ? 'approve' : 'reject';
+        if (!(await this.confirmDialog.ask('Are you sure you want to ' + action + ' this product?'))) {
+            return;
+        }
         this.http.post<Product>(this.base + '/products/' + product.id + '/maintainer/review',
             {approved, reason: reason ?? null}).subscribe({
-            next: () => {
+            next: (updated) => {
                 this.message.set(approved
-                    ? 'Product ' + product.id + ' accepted and sent to the admin.'
+                    ? (updated.status === 'APPROVED'
+                        ? 'Product ' + product.id + ' approved by maintainer.'
+                        : 'Product ' + product.id + ' accepted and sent to the admin.')
                     : 'Product ' + product.id + ' rejected and sent back to the manager.');
                 this.isError.set(false);
                 this.reasons[product.id] = '';
                 this.load();
-                this.loadNotifications();
             },
             error: (err) => this.fail(err)
         });
     }
 
-    adminReview(product: Product, approved: boolean) {
+    async adminReview(product: Product, approved: boolean) {
         const reason = this.reasons[product.id];
         if (!approved && (!reason || !reason.trim())) {
             this.message.set('A rejection reason is required.');
             this.isError.set(true);
+            return;
+        }
+        const action = approved ? 'approve' : 'reject';
+        if (!(await this.confirmDialog.ask('Are you sure you want to ' + action + ' this product?'))) {
             return;
         }
         this.http.post<Product>(this.base + '/products/' + product.id + '/admin/review',
@@ -144,24 +205,19 @@ export class ProductComponent implements OnInit {
                 this.isError.set(false);
                 this.reasons[product.id] = '';
                 this.load();
-                this.loadNotifications();
             },
             error: (err) => this.fail(err)
         });
     }
 
-    markRead(notification: ProductNotification) {
-        this.http.post(this.base + '/notifications/' + notification.id + '/read', {}).subscribe({
-            next: () => this.loadNotifications(),
-            error: (err) => this.fail(err)
-        });
-    }
-
-    addQuantity(product: Product) {
+    async addQuantity(product: Product) {
         const amount = this.amounts[product.id];
         if (!amount || amount < 1) {
             this.message.set('Quantity must be at least 1.');
             this.isError.set(true);
+            return;
+        }
+        if (!(await this.confirmDialog.ask('Are you sure you want to update this product\'s stock?'))) {
             return;
         }
 
@@ -176,11 +232,14 @@ export class ProductComponent implements OnInit {
         });
     }
 
-    updatePrice(product: Product) {
+    async updatePrice(product: Product) {
         const price = this.prices[product.id];
         if (price == null || price <= 0) {
             this.message.set('Price must be greater than 0.');
             this.isError.set(true);
+            return;
+        }
+        if (!(await this.confirmDialog.ask('Are you sure you want to update this product\'s price?'))) {
             return;
         }
 
@@ -195,11 +254,14 @@ export class ProductComponent implements OnInit {
         });
     }
 
-    updateName(product: Product) {
+    async updateName(product: Product) {
         const name = this.names[product.id];
         if (!name || !name.trim()) {
             this.message.set('Name must not be blank.');
             this.isError.set(true);
+            return;
+        }
+        if (!(await this.confirmDialog.ask('Are you sure you want to update this product\'s name?'))) {
             return;
         }
 

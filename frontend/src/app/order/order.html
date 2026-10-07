@@ -1,11 +1,17 @@
-<h1>Orders</h1>
-<h2>API Version</h2>
+@if (feature === 'create') {
+    <h1>Create Order</h1>
+} @else {
+    <h1>All Orders</h1>
+}
+
+<h3>API Version</h3>
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v1'" (change)="setVersion('v1')"> v1 (sync)</label>
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / Kafka)</label>
 <label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v3'" (change)="setVersion('v3')"> v3 (Feign)</label>
 
-@if (role === 'ADMIN') {
-    <h2>Create Order</h2>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+@if (feature === 'create') {
     <form (ngSubmit)="create()">
         <label>User ID <input type="number" name="userId" min="1" [(ngModel)]="form.userId" required></label>
         <label>Product ID <input type="number" name="productId" min="1" [(ngModel)]="form.productId" required></label>
@@ -13,43 +19,45 @@
         <button type="submit" [disabled]="creating()">Create Order</button>
     </form>
 }
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
 
-<h2>All Orders</h2>
-<button type="button" (click)="load()">Refresh</button>
-<table>
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>User Name</th>
-        <th>User Email</th>
-        <th>User ID</th>
-        <th>Product ID</th>
-        <th>Quantity</th>
-        <th>Status</th>
-        <th>Product Updated</th>
-        <th>Action</th>
-    </tr>
-    </thead>
-    <tbody>
-        @for (o of orders(); track o.id) {
-            <tr>
-                <td>{{ o.id }}</td>
-                <td>{{ o.userName ?? o.userId }}</td>
-                <td>{{ o.userEmail ?? '—' }}</td>
-                <td>{{ o.userId }}</td>
-                <td>{{ o.productId }}</td>
-                <td>{{ o.quantity }}</td>
-                <td>{{ o.status }}</td>
-                <td>{{ o.productUpdated }}</td>
-                <td>
-                    @if (o.status === 'CANCELLED') {
-                        Cancelled
-                    } @else {
-                        <button (click)="confirm(o.id)" [disabled]="o.status === 'CONFIRMED' || o.status === 'CONFIRMING'">Confirm</button>
-                    }
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+@if (feature === 'list') {
+    <button type="button" (click)="load()">Refresh</button>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>User Name</th>
+            <th>User Email</th>
+            <th>User ID</th>
+            <th>Product ID</th>
+            <th>Quantity</th>
+            <th>Status</th>
+            <th>Product Updated</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (o of filteredOrders(); track o.id) {
+                <tr>
+                    <td>{{ o.id }}</td>
+                    <td>{{ o.userName ?? o.userId }}</td>
+                    <td>{{ o.userEmail ?? '—' }}</td>
+                    <td>{{ o.userId }}</td>
+                    <td>{{ o.productId }}</td>
+                    <td>{{ o.quantity }}</td>
+                    <td>{{ o.status }}</td>
+                    <td>{{ o.productUpdated }}</td>
+                    <td>
+                        @if (o.status === 'CANCELLED') {
+                            Cancelled
+                        } @else if (canConfirm) {
+                            <button (click)="confirm(o.id)" [disabled]="o.status === 'CONFIRMED' || o.status === 'CONFIRMING'">Confirm</button>
+                        } @else {
+                            <span>—</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

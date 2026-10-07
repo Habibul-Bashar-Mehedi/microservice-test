@@ -1,0 +1,42 @@
+<h1>My Orders</h1>
+<button type="button" (click)="loadOrders()">Refresh</button>
+<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+
+@if (orders().length === 0) {
+    <p>You have no orders yet.</p>
+} @else {
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Status</th>
+            <th>Product Updated</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (o of filteredOrders(); track o.id) {
+                <tr>
+                    <td>{{ o.id }}</td>
+                    <td>{{ productName(o.productId) ?? o.productId }}</td>
+                    <td>{{ o.quantity }}</td>
+                    <td>{{ o.status }}</td>
+                    <td>{{ o.productUpdated }}</td>
+                    <td>
+                        @if (canCancel(o.status)) {
+                            <button
+                                type="button"
+                                (click)="cancelOrder(o)"
+                                [disabled]="cancelling()"
+                            >Cancel</button>
+                        } @else if (o.status === 'CONFIRMED') {
+                            <span>Confirmed</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

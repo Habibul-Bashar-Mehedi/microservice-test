@@ -1,51 +1,56 @@
-<h1>Users</h1>
+@if (feature === 'create') {
+    <h1>Create User</h1>
+    <form (ngSubmit)="create()">
+        <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
+        <label>Email <input type="email" name="email" [(ngModel)]="form.email" required></label>
+        <button type="submit">Create User</button>
+    </form>
+    <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+}
 
-<h2>Create User</h2>
-<form (ngSubmit)="create()">
-    <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
-    <label>Email <input type="email" name="email" [(ngModel)]="form.email" required></label>
-    <button type="submit">Create User</button>
-</form>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-
-<h2>All Users</h2>
-<button type="button" (click)="load()">Refresh</button>
-<table>
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Active Status</th>
-        <th>Role</th>
-        <th>Change Role</th>
-        <th>Action</th>
-    </tr>
-    </thead>
-    <tbody>
-        @for (u of users(); track u.id) {
-            <tr>
-                <td>{{ u.id }}</td>
-                <td>{{ u.name }}</td>
-                <td>{{ u.email }}</td>
-                <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
-                <td>{{ u.role }}</td>
-                <td>
-                    <select [ngModel]="selectedRole[u.id] || u.role" (ngModelChange)="selectedRole[u.id] = $event" [name]="'role-' + u.id">
-                        @for (r of roles; track r) {
-                            <option [value]="r">{{ r }}</option>
+@if (feature === 'list') {
+    <h1>All Users</h1>
+    <button type="button" (click)="load()">Refresh</button>
+    <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Active Status</th>
+            <th>Role</th>
+            <th>Change Role</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (u of filteredUsers(); track u.id) {
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
+                    <td>{{ u.role }}</td>
+                    <td>
+                        <select [ngModel]="selectedRole[u.id] || u.role" (ngModelChange)="selectedRole[u.id] = $event" [name]="'role-' + u.id">
+                            @for (r of roles; track r) {
+                                <option [value]="r">{{ r }}</option>
+                            }
+                        </select>
+                        @if (selectedRole[u.id] && selectedRole[u.id] !== u.role) {
+                            <button type="button" (click)="changeRole(u, selectedRole[u.id])">Set Role</button>
                         }
-                    </select>
-                    <button type="button" (click)="changeRole(u, selectedRole[u.id] || u.role)">Set Role</button>
-                </td>
-                <td>
-                    @if (u.active) {
-                        <button type="button" (click)="setActive(u, false)">Deactivate</button>
-                    } @else {
-                        <button type="button" (click)="setActive(u, true)">Activate</button>
-                    }
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+                    </td>
+                    <td>
+                        @if (u.active) {
+                            <button type="button" (click)="setActive(u, false)">Deactivate</button>
+                        } @else {
+                            <button type="button" (click)="setActive(u, true)">Activate</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

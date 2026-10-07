@@ -1,9 +1,11 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
+import { ConfirmService } from '../confirm-dialog/confirm.service';
 import { MessageLog } from '../models';
 
 @Component({
@@ -15,7 +17,9 @@ import { MessageLog } from '../models';
 export class LogComponent implements OnInit {
 
     private http = inject(HttpClient);
+    private route = inject(ActivatedRoute);
     private title = inject(Title);
+    private confirmDialog = inject(ConfirmService);
 
     logs = signal<MessageLog[]>([]);
     message = signal('');
@@ -43,7 +47,15 @@ export class LogComponent implements OnInit {
 
     ngOnInit() {
         this.title.setTitle('Message Logs - Microservice UI');
-        this.load();
+        this.route.queryParamMap.subscribe(params => {
+            const q = (params.get('q') ?? '').trim();
+            this.searchQuery.set(q);
+            if (q) {
+                this.search();
+            } else {
+                this.load();
+            }
+        });
     }
 
     load() {
@@ -65,11 +77,11 @@ export class LogComponent implements OnInit {
         });
     }
 
-    clearAll() {
+    async clearAll() {
         if (this.clearing()) {
             return;
         }
-        if (!confirm('Delete all log entries? This cannot be undone.')) {
+        if (!(await this.confirmDialog.ask('Delete all log entries? This cannot be undone.'))) {
             return;
         }
         this.clearing.set(true);
