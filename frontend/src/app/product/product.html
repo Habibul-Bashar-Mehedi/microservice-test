@@ -1,11 +1,11 @@
-@if (feature === 'add' && role === 'MANAGER') {
+@if (feature === 'add') {
     <h1>Add Product</h1>
 } @else if (feature === 'list') {
     <h1>Product List</h1>
 } @else if (feature === 'pending') {
     <h1>Pending Approvals</h1>
 } @else if (feature === 'stock') {
-    <h1>{{ role === 'MAINTAINER' ? 'Stock Management' : 'All Products' }}</h1>
+    <h1>All Products</h1>
 }
 
 <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
@@ -22,7 +22,7 @@
     </div>
 }
 
-@if (feature === 'add' && role === 'MANAGER') {
+@if (feature === 'add' && role === 'MAINTAINER') {
     <form (ngSubmit)="create()">
         <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
         <label>Price <input type="number" name="price" step="0.01" min="0" [(ngModel)]="form.price" required></label>
@@ -34,11 +34,11 @@
                 }
             </select>
         </label>
-        <button type="submit">Submit for Review</button>
+        <button type="submit">Submit to Manager</button>
     </form>
 }
 
-@if (feature === 'list' && role === 'MANAGER') {
+@if (feature === 'list') {
     <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
@@ -92,12 +92,14 @@
                     <td>{{ p.status }}</td>
                     <td>{{ p.rejectionReason ?? '—' }}</td>
                     <td>
-                        @if (p.status === 'REJECTED_BY_MAINTAINER' || p.status === 'REJECTED_BY_ADMIN') {
+                        @if (p.status?.startsWith('REJECTED_BY') && isMine(p)) {
                             @if (edits[p.id]) {
                                 <button type="button" (click)="resubmit(p)">Resubmit</button>
                             } @else {
                                 <button type="button" (click)="startEdit(p)">Edit</button>
                             }
+                        } @else if (p.status?.startsWith('REJECTED_BY')) {
+                            <span>Rejected</span>
                         } @else {
                             <span>In review</span>
                         }
@@ -108,7 +110,7 @@
     </table>
 }
 
-@if (feature === 'list' && role === 'MAINTAINER') {
+@if (feature === 'pending') {
     <button type="button" (click)="load()">Refresh</button>
     <table>
         <thead>
@@ -118,97 +120,11 @@
             <th>Price</th>
             <th>Available</th>
             <th>Category</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredList(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.availableQuantity }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (feature === 'pending' && role === 'MANAGER') {
-    <button type="button" (click)="load()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Category</th>
-            <th>Status</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of managerPending(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
-                    <td>{{ p.status }}</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (feature === 'pending' && role === 'MAINTAINER') {
-    <button type="button" (click)="load()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-            <th>Created By</th>
-            <th>Reason</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredPending(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.availableQuantity }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
-                    <td>{{ p.createdBy }}</td>
-                    <td>
-                        <input type="text" [name]="'m-reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Rejection reason">
-                    </td>
-                    <td>
-                        <button type="button" (click)="maintainerReview(p, true)">Approve</button>
-                        <button type="button" (click)="maintainerReview(p, false)">Reject</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (feature === 'pending' && role === 'ADMIN') {
-    <button type="button" (click)="load()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-            <th>Manager</th>
             <th>Maintainer</th>
+            <th>Manager</th>
+            <th>Specialist</th>
+            <th>Salesman</th>
+            <th>Status</th>
             <th>Reason</th>
             <th>Action</th>
         </tr>
@@ -221,41 +137,18 @@
                     <td>{{ p.price }}</td>
                     <td>{{ p.availableQuantity }}</td>
                     <td>{{ p.category ?? 'OTHER' }}</td>
-                    <td>{{ p.createdBy }}</td>
-                    <td>{{ p.maintainerReviewer }}</td>
+                    <td>{{ p.createdBy ?? '—' }}</td>
+                    <td>{{ p.managerReviewer ?? '—' }}</td>
+                    <td>{{ p.specialistReviewer ?? '—' }}</td>
+                    <td>{{ p.salesmanReviewer ?? '—' }}</td>
+                    <td>{{ p.status }}</td>
                     <td>
-                        <input type="text" [name]="'a-reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Rejection reason">
+                        <input type="text" [name]="'reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Rejection reason">
                     </td>
                     <td>
-                        <button type="button" (click)="adminReview(p, true)">Approve</button>
-                        <button type="button" (click)="adminReview(p, false)">Reject</button>
+                        <button type="button" (click)="review(p, true)">Approve</button>
+                        <button type="button" (click)="review(p, false)">Reject</button>
                     </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (feature === 'stock' && role === 'MAINTAINER') {
-    <button type="button" (click)="load()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredStock(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.availableQuantity }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
                 </tr>
             }
         </tbody>

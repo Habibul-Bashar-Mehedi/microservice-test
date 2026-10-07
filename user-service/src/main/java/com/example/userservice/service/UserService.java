@@ -24,7 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class UserService {
 
-    private static final Set<String> ALLOWED_ROLES = Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER");
+    private static final Set<String> ALLOWED_ROLES =
+            Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER", "PRODUCT_SPECIALIST", "SALESMAN");
 
     private final UserRepository userRepository;
     private final RestClient.Builder restClientBuilder;

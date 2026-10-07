@@ -39,10 +39,11 @@ export const roleGuard = (...roles: string[]): CanActivateFn => () => {
 
 export function homePathFor(role: string | undefined): string {
     switch (role) {
-        case 'MANAGER':
-            return '/product/add';
         case 'MAINTAINER':
-            return '/product/pending';
+            return '/product/add';
+        case 'MANAGER':
+        case 'PRODUCT_SPECIALIST':
+        case 'SALESMAN':
         case 'ADMIN':
             return '/product/pending';
         default:
@@ -59,7 +60,8 @@ export const dashboardGuard: CanActivateFn = () => {
     }
 
     const role = auth.getUser()?.role;
-    if (role === 'ADMIN' || role === 'MANAGER' || role === 'MAINTAINER') {
+    if (role === 'ADMIN' || role === 'MANAGER' || role === 'MAINTAINER'
+        || role === 'PRODUCT_SPECIALIST' || role === 'SALESMAN') {
         return router.createUrlTree([homePathFor(role)]);
     }
 

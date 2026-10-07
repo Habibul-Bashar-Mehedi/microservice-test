@@ -16,7 +16,9 @@ export interface Product {
     rejectionReason?: string | null;
     rejectedByRole?: string | null;
     createdBy?: string | null;
-    maintainerReviewer?: string | null;
+    managerReviewer?: string | null;
+    specialistReviewer?: string | null;
+    salesmanReviewer?: string | null;
     adminReviewer?: string | null;
 }
 

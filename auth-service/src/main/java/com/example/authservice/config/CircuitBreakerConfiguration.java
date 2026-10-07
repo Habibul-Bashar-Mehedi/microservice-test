@@ -23,7 +23,7 @@ public class CircuitBreakerConfiguration {
                         .permittedNumberOfCallsInHalfOpenState(3)
                         .build())
                 .timeLimiterConfig(TimeLimiterConfig.custom()
-                        .timeoutDuration(Duration.ofSeconds(5))
+                        .timeoutDuration(Duration.ofSeconds(15))
                         .cancelRunningFuture(true)
                         .build())
                 .build());

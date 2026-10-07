@@ -60,6 +60,20 @@ class UserServiceTest {
     }
 
     @Test
+    void createUser_acceptsApprovalFlowRoles() {
+        when(userRepository.existsByEmail(any(String.class))).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User specialist = userService.createUser(
+                User.builder().name("S").email("s@example.com").role("product_specialist").build());
+        User salesman = userService.createUser(
+                User.builder().name("L").email("l@example.com").role("salesman").build());
+
+        assertThat(specialist.getRole()).isEqualTo("PRODUCT_SPECIALIST");
+        assertThat(salesman.getRole()).isEqualTo("SALESMAN");
+    }
+
+    @Test
     void createUser_conflictWhenEmailExists() {
         when(userRepository.existsByEmail("dup@example.com")).thenReturn(true);
 

@@ -23,31 +23,31 @@ export const routes: Routes = [
         path: 'product/add',
         component: ProductComponent,
         data: { feature: 'add' },
-        canActivate: [authGuard, roleGuard('MANAGER')]
+        canActivate: [authGuard, roleGuard('MAINTAINER')]
     },
     {
         path: 'product/list',
         component: ProductComponent,
         data: { feature: 'list' },
-        canActivate: [authGuard, roleGuard('MANAGER', 'MAINTAINER')]
+        canActivate: [authGuard, roleGuard('MAINTAINER', 'MANAGER', 'PRODUCT_SPECIALIST', 'SALESMAN', 'ADMIN')]
     },
     {
         path: 'product/pending',
         component: ProductComponent,
         data: { feature: 'pending' },
-        canActivate: [authGuard, roleGuard('MANAGER', 'MAINTAINER', 'ADMIN')]
+        canActivate: [authGuard, roleGuard('MANAGER', 'PRODUCT_SPECIALIST', 'SALESMAN', 'ADMIN')]
     },
     {
         path: 'product/stock',
         component: ProductComponent,
         data: { feature: 'stock' },
-        canActivate: [authGuard, roleGuard('MAINTAINER', 'ADMIN')]
+        canActivate: [authGuard, roleGuard('ADMIN')]
     },
 
     {
         path: 'notifications',
         component: NotificationsComponent,
-        canActivate: [authGuard, roleGuard('MANAGER', 'MAINTAINER', 'ADMIN')]
+        canActivate: [authGuard, roleGuard('MAINTAINER', 'MANAGER', 'PRODUCT_SPECIALIST', 'SALESMAN', 'ADMIN')]
     },
 
     {

@@ -3,7 +3,6 @@ package com.example.productservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -49,8 +48,11 @@ class ProductServiceTest {
                 .price(new BigDecimal("100.00"))
                 .availableQuantity(10)
                 .status(status)
-                .createdBy("manager@example.com")
-                .maintainerReviewer("maintainer@example.com")
+                .createdBy("maintainer@example.com")
+                .managerReviewer("manager@example.com")
+                .specialistReviewer("specialist@example.com")
+                .salesmanReviewer("salesman@example.com")
+                .adminReviewer("admin@example.com")
                 .build();
     }
 
@@ -61,148 +63,56 @@ class ProductServiceTest {
     // ---- create ----
 
     @Test
-    void create_startsPendingMaintainerAndRecordsManager() {
+    void create_startsPendingManagerAndRecordsMaintainer() {
         stubSave();
         Product request = Product.builder().name("Phone").price(new BigDecimal("10.00"))
                 .availableQuantity(2).build();
 
-        Product saved = productService.create(request, "manager@example.com");
+        Product saved = productService.create(request, "maintainer@example.com");
 
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
-        assertThat(saved.getCreatedBy()).isEqualTo("manager@example.com");
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MANAGER);
+        assertThat(saved.getCreatedBy()).isEqualTo("maintainer@example.com");
         assertThat(saved.getRejectionReason()).isNull();
+        assertThat(saved.getManagerReviewer()).isNull();
+        assertThat(saved.getSpecialistReviewer()).isNull();
+        assertThat(saved.getSalesmanReviewer()).isNull();
+        assertThat(saved.getAdminReviewer()).isNull();
         verify(productSearchService).index(saved);
     }
 
     @Test
-    void create_priceBetween100And200_isDirectlyApproved() {
+    void create_defaultsCategoryToOther() {
         stubSave();
-        Product request = Product.builder().name("Phone").price(new BigDecimal("150.00"))
+        Product request = Product.builder().name("Phone").price(new BigDecimal("10.00"))
                 .availableQuantity(2).build();
 
-        Product saved = productService.create(request, "manager@example.com");
+        Product saved = productService.create(request, "maintainer@example.com");
 
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
         assertThat(saved.getCategory()).isEqualTo(Category.OTHER);
     }
 
-    @Test
-    void create_price200_isDirectlyApproved() {
-        stubSave();
-        Product request = Product.builder().name("Phone").price(new BigDecimal("200.00"))
-                .availableQuantity(2).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
-    }
+    // ---- manager review ----
 
     @Test
-    void create_priceBetween200And500_goesToMaintainer() {
-        stubSave();
-        Product request = Product.builder().name("Phone").price(new BigDecimal("350.00"))
-                .availableQuantity(2).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
-    }
-
-    @Test
-    void create_priceAbove500_goesToMaintainerBeforeAdmin() {
-        stubSave();
-        Product request = Product.builder().name("Phone").price(new BigDecimal("501.00"))
-                .availableQuantity(2).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
-    }
-
-    @Test
-    void create_priceBelow100_fallsBackToAdminArm() {
-        stubSave();
-        Product request = Product.builder().name("Phone").price(new BigDecimal("99.99"))
-                .availableQuantity(2).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
-    }
-
-    @Test
-    void create_stapleCategory_isDirectlyApprovedRegardlessOfHighPrice() {
-        stubSave();
-        Product request = Product.builder().name("Chal").price(new BigDecimal("900.00"))
-                .availableQuantity(2).category(Category.CHAL).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
-    }
-
-    @Test
-    void create_maintainerOnlyCategory_goesToMaintainerRegardlessOfLowPrice() {
-        stubSave();
-        Product request = Product.builder().name("Chini").price(new BigDecimal("50.00"))
-                .availableQuantity(2).category(Category.CHINI).build();
-
-        Product saved = productService.create(request, "manager@example.com");
-
-        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
-    }
-
-    // ---- maintainer review ----
-
-    @Test
-    void maintainerReview_accept_movesToPendingAdminAndNotifiesAdmin() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
-        p.setPrice(new BigDecimal("600.00"));
+    void managerReview_accept_movesToSpecialistAndNotifiesSpecialistRole() {
+        Product p = product(1L, ProductStatus.PENDING_MANAGER);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
 
-        Product result = productService.maintainerReview(1L, "maint@example.com", true, null);
+        Product result = productService.managerReview(1L, "manager@example.com", true, null);
 
-        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_ADMIN);
-        assertThat(result.getMaintainerReviewer()).isEqualTo("maint@example.com");
-        verify(productNotificationService).notify(isNull(), eq("ADMIN"), eq(1L), eq("Phone"), anyString());
-    }
-
-    @Test
-    void maintainerReview_accept_withoutAdminRequired_approvesDirectly() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
-        p.setPrice(new BigDecimal("300.00"));
-        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
-        stubSave();
-
-        Product result = productService.maintainerReview(1L, "maint@example.com", true, null);
-
-        assertThat(result.getStatus()).isEqualTo(ProductStatus.APPROVED);
-        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_PRODUCT_SPECIALIST);
+        assertThat(result.getManagerReviewer()).isEqualTo("manager@example.com");
+        verify(productNotificationService).notify(isNull(), eq("PRODUCT_SPECIALIST"), eq(1L),
                 eq("Phone"), anyString());
-        verify(productNotificationService, never()).notify(isNull(), eq("ADMIN"), anyLong(), anyString(), anyString());
     }
 
     @Test
-    void maintainerReview_maintainerOnlyCategory_approvesWithoutAdmin() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
-        p.setCategory(Category.MOSHLA);
-        p.setPrice(new BigDecimal("900.00"));
-        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
-        stubSave();
-
-        Product result = productService.maintainerReview(1L, "maint@example.com", true, null);
-
-        assertThat(result.getStatus()).isEqualTo(ProductStatus.APPROVED);
-        verify(productNotificationService, never()).notify(isNull(), eq("ADMIN"), anyLong(), anyString(), anyString());
-    }
-
-    @Test
-    void maintainerReview_reject_requiresReason() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+    void managerReview_reject_requiresReason() {
+        Product p = product(1L, ProductStatus.PENDING_MANAGER);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
 
-        assertThatThrownBy(() -> productService.maintainerReview(1L, "maint@example.com", false, "  "))
+        assertThatThrownBy(() -> productService.managerReview(1L, "manager@example.com", false, "  "))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
@@ -210,25 +120,26 @@ class ProductServiceTest {
     }
 
     @Test
-    void maintainerReview_reject_returnsToManagerWithReason() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+    void managerReview_reject_notifiesMaintainer() {
+        Product p = product(1L, ProductStatus.PENDING_MANAGER);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
 
-        Product result = productService.maintainerReview(1L, "maint@example.com", false, "Too cheap");
+        Product result = productService.managerReview(1L, "manager@example.com", false, "Bad data");
 
-        assertThat(result.getStatus()).isEqualTo(ProductStatus.REJECTED_BY_MAINTAINER);
-        assertThat(result.getRejectionReason()).isEqualTo("Too cheap");
-        assertThat(result.getRejectedByRole()).isEqualTo("MAINTAINER");
-        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L), eq("Phone"), anyString());
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.REJECTED_BY_MANAGER);
+        assertThat(result.getRejectionReason()).isEqualTo("Bad data");
+        assertThat(result.getRejectedByRole()).isEqualTo("MANAGER");
+        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
     }
 
     @Test
-    void maintainerReview_wrongStatus_conflict() {
+    void managerReview_wrongStatus_conflict() {
         Product p = product(1L, ProductStatus.PENDING_ADMIN);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
 
-        assertThatThrownBy(() -> productService.maintainerReview(1L, "maint@example.com", true, null))
+        assertThatThrownBy(() -> productService.managerReview(1L, "manager@example.com", true, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
@@ -237,15 +148,89 @@ class ProductServiceTest {
     void review_productNotFound() {
         when(productRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> productService.maintainerReview(5L, "maint@example.com", true, null))
+        assertThatThrownBy(() -> productService.managerReview(5L, "manager@example.com", true, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    // ---- product specialist review ----
+
+    @Test
+    void specialistReview_accept_movesToSalesmanAndNotifiesSalesmanRole() {
+        Product p = product(1L, ProductStatus.PENDING_PRODUCT_SPECIALIST);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.specialistReview(1L, "specialist@example.com", true, null);
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_SALESMAN);
+        assertThat(result.getSpecialistReviewer()).isEqualTo("specialist@example.com");
+        verify(productNotificationService).notify(isNull(), eq("SALESMAN"), eq(1L), eq("Phone"), anyString());
+    }
+
+    @Test
+    void specialistReview_reject_notifiesMaintainerAndManager() {
+        Product p = product(1L, ProductStatus.PENDING_PRODUCT_SPECIALIST);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.specialistReview(1L, "specialist@example.com", false, "Wrong spec");
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.REJECTED_BY_PRODUCT_SPECIALIST);
+        assertThat(result.getRejectedByRole()).isEqualTo("PRODUCT_SPECIALIST");
+        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+    }
+
+    @Test
+    void specialistReview_reject_requiresReason() {
+        Product p = product(1L, ProductStatus.PENDING_PRODUCT_SPECIALIST);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> productService.specialistReview(1L, "specialist@example.com", false, null))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    // ---- salesman review ----
+
+    @Test
+    void salesmanReview_accept_movesToAdminAndNotifiesAdminRole() {
+        Product p = product(1L, ProductStatus.PENDING_SALESMAN);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.salesmanReview(1L, "salesman@example.com", true, null);
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_ADMIN);
+        assertThat(result.getSalesmanReviewer()).isEqualTo("salesman@example.com");
+        verify(productNotificationService).notify(isNull(), eq("ADMIN"), eq(1L), eq("Phone"), anyString());
+    }
+
+    @Test
+    void salesmanReview_reject_notifiesMaintainerManagerAndSpecialist() {
+        Product p = product(1L, ProductStatus.PENDING_SALESMAN);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.salesmanReview(1L, "salesman@example.com", false, "No demand");
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.REJECTED_BY_SALESMAN);
+        assertThat(result.getRejectedByRole()).isEqualTo("SALESMAN");
+        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("specialist@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
     }
 
     // ---- admin review ----
 
     @Test
-    void adminReview_accept_finallyApproves() {
+    void adminReview_accept_finallyApprovesAndNotifiesChain() {
         Product p = product(1L, ProductStatus.PENDING_ADMIN);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
@@ -254,8 +239,14 @@ class ProductServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(ProductStatus.APPROVED);
         assertThat(result.getAdminReviewer()).isEqualTo("admin@example.com");
-        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), anyLong(), anyString(), anyString());
-        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), anyLong(), anyString(), anyString());
+        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("specialist@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("salesman@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
     }
 
     @Test
@@ -269,7 +260,7 @@ class ProductServiceTest {
     }
 
     @Test
-    void adminReview_reject_notifiesManagerAndMaintainer() {
+    void adminReview_reject_notifiesWholeChain() {
         Product p = product(1L, ProductStatus.PENDING_ADMIN);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
@@ -278,15 +269,21 @@ class ProductServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(ProductStatus.REJECTED_BY_ADMIN);
         assertThat(result.getRejectedByRole()).isEqualTo("ADMIN");
-        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), anyLong(), anyString(), anyString());
-        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), anyLong(), anyString(), anyString());
+        verify(productNotificationService).notify(eq("maintainer@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("specialist@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService).notify(eq("salesman@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
     }
 
     // ---- resubmit ----
 
     @Test
-    void resubmit_movesRejectedProductBackToMaintainer() {
-        Product p = product(1L, ProductStatus.REJECTED_BY_ADMIN);
+    void resubmit_fromManagerRejection_returnsToManager() {
+        Product p = product(1L, ProductStatus.REJECTED_BY_MANAGER);
         p.setRejectionReason("nope");
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
@@ -294,16 +291,55 @@ class ProductServiceTest {
         Product updated = Product.builder().name("Phone v2").price(new BigDecimal("300.00"))
                 .availableQuantity(20).build();
 
-        Product result = productService.resubmit(1L, updated, "manager@example.com");
+        Product result = productService.resubmit(1L, updated, "maintainer@example.com");
 
-        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_MANAGER);
         assertThat(result.getName()).isEqualTo("Phone v2");
         assertThat(result.getRejectionReason()).isNull();
     }
 
     @Test
+    void resubmit_fromSpecialistRejection_returnsToSpecialist() {
+        Product p = product(1L, ProductStatus.REJECTED_BY_PRODUCT_SPECIALIST);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.resubmit(1L,
+                Product.builder().name("Phone").price(BigDecimal.ONE).availableQuantity(1).build(),
+                "maintainer@example.com");
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_PRODUCT_SPECIALIST);
+    }
+
+    @Test
+    void resubmit_fromSalesmanRejection_returnsToSalesman() {
+        Product p = product(1L, ProductStatus.REJECTED_BY_SALESMAN);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.resubmit(1L,
+                Product.builder().name("Phone").price(BigDecimal.ONE).availableQuantity(1).build(),
+                "maintainer@example.com");
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_SALESMAN);
+    }
+
+    @Test
+    void resubmit_fromAdminRejection_returnsToAdmin() {
+        Product p = product(1L, ProductStatus.REJECTED_BY_ADMIN);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.resubmit(1L,
+                Product.builder().name("Phone").price(BigDecimal.ONE).availableQuantity(1).build(),
+                "maintainer@example.com");
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_ADMIN);
+    }
+
+    @Test
     void resubmit_onlyOwnProductsAllowed() {
-        Product p = product(1L, ProductStatus.REJECTED_BY_MAINTAINER);
+        Product p = product(1L, ProductStatus.REJECTED_BY_MANAGER);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
 
         assertThatThrownBy(() -> productService.resubmit(1L,
@@ -315,14 +351,26 @@ class ProductServiceTest {
 
     @Test
     void resubmit_onlyRejectedProductsAllowed() {
-        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+        Product p = product(1L, ProductStatus.PENDING_MANAGER);
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
 
         assertThatThrownBy(() -> productService.resubmit(1L,
                 Product.builder().name("x").price(BigDecimal.ONE).availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void resubmit_rejectsInvalidInput() {
+        Product p = product(1L, ProductStatus.REJECTED_BY_MANAGER);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> productService.resubmit(1L,
+                Product.builder().name("").price(BigDecimal.ONE).availableQuantity(1).build(),
+                "maintainer@example.com"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     // ---- stock ----
@@ -362,7 +410,7 @@ class ProductServiceTest {
     void create_rejectsBlankName() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().name("  ").price(BigDecimal.ONE).availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -371,7 +419,7 @@ class ProductServiceTest {
     void create_rejectsNonPositivePrice() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().name("X").price(BigDecimal.ZERO).availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -380,7 +428,7 @@ class ProductServiceTest {
     void create_rejectsNegativeQuantity() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().name("X").price(BigDecimal.ONE).availableQuantity(-1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -389,7 +437,7 @@ class ProductServiceTest {
     void create_rejectsNullName() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().price(BigDecimal.ONE).availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -398,7 +446,7 @@ class ProductServiceTest {
     void create_rejectsNullPrice() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().name("X").availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -407,19 +455,7 @@ class ProductServiceTest {
     void create_rejectsNullQuantity() {
         assertThatThrownBy(() -> productService.create(
                 Product.builder().name("X").price(BigDecimal.ONE).build(),
-                "manager@example.com"))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
-    }
-
-    @Test
-    void resubmit_rejectsInvalidInput() {
-        Product p = product(1L, ProductStatus.REJECTED_BY_MAINTAINER);
-        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
-
-        assertThatThrownBy(() -> productService.resubmit(1L,
-                Product.builder().name("").price(BigDecimal.ONE).availableQuantity(1).build(),
-                "manager@example.com"))
+                "maintainer@example.com"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }

@@ -22,7 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AuthService {
 
-    private static final Set<String> ALLOWED_ROLES = Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER");
+    private static final Set<String> ALLOWED_ROLES =
+            Set.of("USER", "ADMIN", "MANAGER", "MAINTAINER", "PRODUCT_SPECIALIST", "SALESMAN");
 
     private final AuthUserRepository authUserRepository;
     private final JwtDecoder googleJwtDecoder;

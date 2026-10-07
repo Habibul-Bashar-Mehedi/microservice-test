@@ -65,9 +65,19 @@ public class ProductController {
         return productService.findByCreatedBy(authentication.getName());
     }
 
-    @GetMapping("/v1/products/pending/maintainer")
-    public List<Product> pendingMaintainerV1() {
-        return productService.findByStatus(ProductStatus.PENDING_MAINTAINER);
+    @GetMapping("/v1/products/pending/manager")
+    public List<Product> pendingManagerV1() {
+        return productService.findByStatus(ProductStatus.PENDING_MANAGER);
+    }
+
+    @GetMapping("/v1/products/pending/specialist")
+    public List<Product> pendingSpecialistV1() {
+        return productService.findByStatus(ProductStatus.PENDING_PRODUCT_SPECIALIST);
+    }
+
+    @GetMapping("/v1/products/pending/salesman")
+    public List<Product> pendingSalesmanV1() {
+        return productService.findByStatus(ProductStatus.PENDING_SALESMAN);
     }
 
     @GetMapping("/v1/products/pending/admin")
@@ -81,10 +91,22 @@ public class ProductController {
         return productService.resubmit(id, product, authentication.getName());
     }
 
-    @PostMapping("/v1/products/{id}/maintainer/review")
-    public Product maintainerReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
+    @PostMapping("/v1/products/{id}/manager/review")
+    public Product managerReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
             Authentication authentication) {
-        return productService.maintainerReview(id, authentication.getName(), request.approved(), request.reason());
+        return productService.managerReview(id, authentication.getName(), request.approved(), request.reason());
+    }
+
+    @PostMapping("/v1/products/{id}/specialist/review")
+    public Product specialistReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
+            Authentication authentication) {
+        return productService.specialistReview(id, authentication.getName(), request.approved(), request.reason());
+    }
+
+    @PostMapping("/v1/products/{id}/salesman/review")
+    public Product salesmanReviewV1(@PathVariable Long id, @RequestBody ReviewRequest request,
+            Authentication authentication) {
+        return productService.salesmanReview(id, authentication.getName(), request.approved(), request.reason());
     }
 
     @PostMapping("/v1/products/{id}/admin/review")

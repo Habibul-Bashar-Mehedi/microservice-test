@@ -52,7 +52,7 @@ class ProductSearchServiceTest {
 
     @Test
     void index_nonApprovedProductIsRemoved() {
-        service.index(product(2L, ProductStatus.PENDING_MAINTAINER));
+        service.index(product(2L, ProductStatus.PENDING_MANAGER));
 
         verify(searchRepository).deleteById(2L);
     }
@@ -74,7 +74,7 @@ class ProductSearchServiceTest {
     @Test
     void run_reindexesOnlyApprovedProducts() {
         Product approved = product(1L, ProductStatus.APPROVED);
-        Product pending = product(2L, ProductStatus.PENDING_MAINTAINER);
+        Product pending = product(2L, ProductStatus.PENDING_MANAGER);
         when(productRepository.findAll()).thenReturn(List.of(approved, pending));
 
         service.run(null);

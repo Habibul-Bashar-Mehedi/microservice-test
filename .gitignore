@@ -3,3 +3,15 @@ build/
 .idea
 *.iml
 out/
+
+# Tooling / build caches (must never be committed)
+caches/
+wrapper/
+daemon/
+native/
+.tmp/
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

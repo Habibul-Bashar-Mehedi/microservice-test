@@ -76,7 +76,8 @@ class AuthServiceTest {
 
     @Test
     void changeRole_acceptsAllSupportedRoles() {
-        for (String role : List.of("USER", "ADMIN", "MANAGER", "MAINTAINER")) {
+        for (String role : List.of("USER", "ADMIN", "MANAGER", "MAINTAINER",
+                "PRODUCT_SPECIALIST", "SALESMAN")) {
             AuthUser user = authUser("USER");
             when(authUserRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
 

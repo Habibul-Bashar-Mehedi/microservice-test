@@ -47,7 +47,7 @@ public class Product {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ProductStatus status = ProductStatus.PENDING_MAINTAINER;
+    private ProductStatus status = ProductStatus.PENDING_MANAGER;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
@@ -63,8 +63,14 @@ public class Product {
     @Column(name = "created_by")
     private String createdBy;
 
-    @Column(name = "maintainer_reviewer")
-    private String maintainerReviewer;
+    @Column(name = "manager_reviewer")
+    private String managerReviewer;
+
+    @Column(name = "specialist_reviewer")
+    private String specialistReviewer;
+
+    @Column(name = "salesman_reviewer")
+    private String salesmanReviewer;
 
     @Column(name = "admin_reviewer")
     private String adminReviewer;

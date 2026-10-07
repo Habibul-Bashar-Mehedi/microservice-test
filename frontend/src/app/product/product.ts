@@ -26,6 +26,7 @@ export class ProductComponent implements OnInit {
     private confirmDialog = inject(ConfirmService);
 
     role = this.auth.getUser()?.role ?? 'USER';
+    myEmail = (this.auth.getUser()?.email ?? '').toLowerCase();
     feature: ProductFeature = 'list';
 
     list = signal<Product[]>([]);
@@ -37,9 +38,6 @@ export class ProductComponent implements OnInit {
     filteredList = computed(() => this.applyView(this.list()));
     filteredPending = computed(() => this.applyView(this.pending()));
     filteredStock = computed(() => this.applyView(this.stock()));
-
-    managerPending = computed(() => this.applyView(this.list()).filter(p =>
-        p.status === 'PENDING_MAINTAINER' || p.status === 'PENDING_ADMIN'));
 
     categories = ['OTHER', 'CHAL', 'DAL', 'ATA', 'MOYDA', 'CHINI', 'MOSHLA'];
     form = {name: '', price: null as number | null, availableQuantity: null as number | null, category: 'OTHER'};
@@ -83,25 +81,46 @@ export class ProductComponent implements OnInit {
 
     load() {
         if (this.feature === 'list') {
-            if (this.role === 'MANAGER') {
-                this.get(this.base + '/products/mine', this.list);
-            } else {
-                this.get(this.base + '/products', this.list);
-            }
+            this.get(this.base + '/products/all', this.list);
         } else if (this.feature === 'pending') {
-            if (this.role === 'MANAGER') {
-                this.get(this.base + '/products/mine', this.list);
-            } else if (this.role === 'MAINTAINER') {
-                this.get(this.base + '/products/pending/maintainer', this.pending);
-            } else {
-                this.get(this.base + '/products/pending/admin', this.pending);
+            const url = this.pendingUrl();
+            if (url) {
+                this.get(url, this.pending);
             }
         } else if (this.feature === 'stock') {
-            if (this.role === 'MAINTAINER') {
-                this.get(this.base + '/products', this.stock);
-            } else {
-                this.get(this.base + '/products/all', this.stock);
-            }
+            this.get(this.base + '/products/all', this.stock);
+        }
+    }
+
+    private pendingUrl(): string | null {
+        switch (this.role) {
+            case 'MANAGER':
+                return this.base + '/products/pending/manager';
+            case 'PRODUCT_SPECIALIST':
+                return this.base + '/products/pending/specialist';
+            case 'SALESMAN':
+                return this.base + '/products/pending/salesman';
+            case 'ADMIN':
+                return this.base + '/products/pending/admin';
+            default:
+                return null;
+        }
+    }
+
+    isMine(product: Product): boolean {
+        return (product.createdBy ?? '').toLowerCase() === this.myEmail;
+    }
+
+    private reviewUrl(product: Product): string {
+        switch (this.role) {
+            case 'MANAGER':
+                return this.base + '/products/' + product.id + '/manager/review';
+            case 'PRODUCT_SPECIALIST':
+                return this.base + '/products/' + product.id + '/specialist/review';
+            case 'SALESMAN':
+                return this.base + '/products/' + product.id + '/salesman/review';
+            default:
+                return this.base + '/products/' + product.id + '/admin/review';
         }
     }
 
@@ -117,10 +136,8 @@ export class ProductComponent implements OnInit {
             return;
         }
         this.http.post<Product>(this.base + '/products', this.form).subscribe({
-            next: (created) => {
-                this.message.set(created.status === 'APPROVED'
-                    ? 'Product created and approved automatically.'
-                    : 'Product created and sent to the maintainer for review.');
+            next: () => {
+                this.message.set('Product created and sent to the manager for review.');
                 this.isError.set(false);
                 this.form = {name: '', price: null, availableQuantity: null, category: 'OTHER'};
             },
@@ -147,9 +164,7 @@ export class ProductComponent implements OnInit {
         }
         this.http.put<Product>(this.base + '/products/' + product.id, edit).subscribe({
             next: (updated) => {
-                this.message.set(updated.status === 'APPROVED'
-                    ? 'Product ' + product.id + ' resubmitted and approved automatically.'
-                    : 'Product ' + product.id + ' resubmitted to the maintainer.');
+                this.message.set('Product ' + product.id + ' corrections saved and resubmitted (' + updated.status + ').');
                 this.isError.set(false);
                 delete this.edits[product.id];
                 this.load();
@@ -158,7 +173,7 @@ export class ProductComponent implements OnInit {
         });
     }
 
-    async maintainerReview(product: Product, approved: boolean) {
+    async review(product: Product, approved: boolean) {
         const reason = this.reasons[product.id];
         if (!approved && (!reason || !reason.trim())) {
             this.message.set('A rejection reason is required.');
@@ -169,39 +184,12 @@ export class ProductComponent implements OnInit {
         if (!(await this.confirmDialog.ask('Are you sure you want to ' + action + ' this product?'))) {
             return;
         }
-        this.http.post<Product>(this.base + '/products/' + product.id + '/maintainer/review',
+        this.http.post<Product>(this.reviewUrl(product),
             {approved, reason: reason ?? null}).subscribe({
             next: (updated) => {
                 this.message.set(approved
-                    ? (updated.status === 'APPROVED'
-                        ? 'Product ' + product.id + ' approved by maintainer.'
-                        : 'Product ' + product.id + ' accepted and sent to the admin.')
-                    : 'Product ' + product.id + ' rejected and sent back to the manager.');
-                this.isError.set(false);
-                this.reasons[product.id] = '';
-                this.load();
-            },
-            error: (err) => this.fail(err)
-        });
-    }
-
-    async adminReview(product: Product, approved: boolean) {
-        const reason = this.reasons[product.id];
-        if (!approved && (!reason || !reason.trim())) {
-            this.message.set('A rejection reason is required.');
-            this.isError.set(true);
-            return;
-        }
-        const action = approved ? 'approve' : 'reject';
-        if (!(await this.confirmDialog.ask('Are you sure you want to ' + action + ' this product?'))) {
-            return;
-        }
-        this.http.post<Product>(this.base + '/products/' + product.id + '/admin/review',
-            {approved, reason: reason ?? null}).subscribe({
-            next: () => {
-                this.message.set(approved
-                    ? 'Product ' + product.id + ' finally approved and added to the store.'
-                    : 'Product ' + product.id + ' rejected and both manager and maintainer notified.');
+                    ? 'Product ' + product.id + ' accepted (' + updated.status + ').'
+                    : 'Product ' + product.id + ' rejected and the previous reviewers were notified.');
                 this.isError.set(false);
                 this.reasons[product.id] = '';
                 this.load();

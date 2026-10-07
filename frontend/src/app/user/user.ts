@@ -38,7 +38,7 @@ export class UserComponent implements OnInit {
             u.role?.toLowerCase().includes(q));
     });
     form = {name: '', email: ''};
-    roles = ['USER', 'ADMIN', 'MANAGER', 'MAINTAINER'];
+    roles = ['USER', 'ADMIN', 'MANAGER', 'MAINTAINER', 'PRODUCT_SPECIALIST', 'SALESMAN'];
     selectedRole: Record<number, string> = {};
     message = signal('');
     isError = signal(false);

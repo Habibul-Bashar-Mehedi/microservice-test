@@ -13,6 +13,8 @@ declare global {
                     initialize(config: {
                         client_id: string;
                         callback: (response: {credential: string}) => void;
+                        use_fedcm_for_prompt?: boolean;
+                        use_fedcm_for_button?: boolean;
                     }): void;
                     renderButton(
                         parent: HTMLElement,
@@ -50,6 +52,8 @@ export class LoginComponent implements AfterViewInit {
 
         google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
+            use_fedcm_for_prompt: true,
+            use_fedcm_for_button: true,
             callback: (response) => this.onCredential(response.credential)
         });
 

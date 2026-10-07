@@ -94,21 +94,20 @@ export class App {
 
     get navItems(): NavItem[] {
         switch (this.role) {
-            case 'MANAGER':
+            case 'MAINTAINER':
                 return [
                     {label: 'Add Product', link: '/product/add'},
                     {label: 'Product List', link: '/product/list'},
-                    {label: 'Pending Approvals', link: '/product/pending'},
                     {label: 'Notifications', link: '/notifications'},
                     {label: 'Orders', link: '/order/list'}
                 ];
-            case 'MAINTAINER':
+            case 'MANAGER':
+            case 'PRODUCT_SPECIALIST':
+            case 'SALESMAN':
                 return [
                     {label: 'Product List', link: '/product/list'},
                     {label: 'Pending Approvals', link: '/product/pending'},
-                    {label: 'Stock Management', link: '/product/stock'},
-                    {label: 'Notifications', link: '/notifications'},
-                    {label: 'Orders', link: '/order/list'}
+                    {label: 'Notifications', link: '/notifications'}
                 ];
             case 'ADMIN':
                 return [
@@ -270,7 +269,8 @@ export class App {
                 if (this.role === 'ADMIN') {
                     return '/product/stock';
                 }
-                if (this.role === 'MANAGER' || this.role === 'MAINTAINER') {
+                if (this.role === 'MAINTAINER' || this.role === 'MANAGER'
+                    || this.role === 'PRODUCT_SPECIALIST' || this.role === 'SALESMAN') {
                     return '/product/list';
                 }
                 return '/dashboard';

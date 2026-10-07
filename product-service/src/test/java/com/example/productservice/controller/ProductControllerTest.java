@@ -61,14 +61,14 @@ class ProductControllerTest {
 
     private Product product(Long id) {
         return Product.builder().id(id).name("Phone").price(new BigDecimal("10.00"))
-                .availableQuantity(5).status(ProductStatus.PENDING_MAINTAINER).build();
+                .availableQuantity(5).status(ProductStatus.PENDING_MANAGER).build();
     }
 
     @Test
     void createV1_returns201AndUsesAuthenticatedEmail() {
-        when(productService.create(any(Product.class), eq("m@x.com"))).thenReturn(product(1L));
+        when(productService.create(any(Product.class), eq("mt@x.com"))).thenReturn(product(1L));
 
-        var response = controller.createV1(product(null), auth("m@x.com", "MANAGER"));
+        var response = controller.createV1(product(null), auth("mt@x.com", "MAINTAINER"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
@@ -88,32 +88,56 @@ class ProductControllerTest {
 
     @Test
     void findMineV1_usesAuthenticatedEmail() {
-        when(productService.findByCreatedBy("m@x.com")).thenReturn(List.of(product(1L)));
-        assertThat(controller.findMineV1(auth("m@x.com", "MANAGER"))).hasSize(1);
+        when(productService.findByCreatedBy("mt@x.com")).thenReturn(List.of(product(1L)));
+        assertThat(controller.findMineV1(auth("mt@x.com", "MAINTAINER"))).hasSize(1);
     }
 
     @Test
     void pendingQueues_queryByStatus() {
-        when(productService.findByStatus(ProductStatus.PENDING_MAINTAINER)).thenReturn(List.of(product(1L)));
+        when(productService.findByStatus(ProductStatus.PENDING_MANAGER)).thenReturn(List.of(product(1L)));
+        when(productService.findByStatus(ProductStatus.PENDING_PRODUCT_SPECIALIST)).thenReturn(List.of());
+        when(productService.findByStatus(ProductStatus.PENDING_SALESMAN)).thenReturn(List.of());
         when(productService.findByStatus(ProductStatus.PENDING_ADMIN)).thenReturn(List.of());
 
-        assertThat(controller.pendingMaintainerV1()).hasSize(1);
+        assertThat(controller.pendingManagerV1()).hasSize(1);
+        assertThat(controller.pendingSpecialistV1()).isEmpty();
+        assertThat(controller.pendingSalesmanV1()).isEmpty();
         assertThat(controller.pendingAdminV1()).isEmpty();
     }
 
     @Test
     void resubmitV1_delegates() {
-        when(productService.resubmit(eq(1L), any(Product.class), eq("m@x.com"))).thenReturn(product(1L));
-        assertThat(controller.resubmitV1(1L, product(1L), auth("m@x.com", "MANAGER"))).isNotNull();
+        when(productService.resubmit(eq(1L), any(Product.class), eq("mt@x.com"))).thenReturn(product(1L));
+        assertThat(controller.resubmitV1(1L, product(1L), auth("mt@x.com", "MAINTAINER"))).isNotNull();
     }
 
     @Test
-    void maintainerReviewV1_delegates() {
-        when(productService.maintainerReview(eq(1L), eq("mt@x.com"), anyBoolean(), any())).thenReturn(product(1L));
+    void managerReviewV1_delegates() {
+        when(productService.managerReview(eq(1L), eq("mg@x.com"), anyBoolean(), any())).thenReturn(product(1L));
 
-        controller.maintainerReviewV1(1L, new ProductController.ReviewRequest(true, null), auth("mt@x.com", "MAINTAINER"));
+        controller.managerReviewV1(1L, new ProductController.ReviewRequest(true, null), auth("mg@x.com", "MANAGER"));
 
-        verify(productService).maintainerReview(1L, "mt@x.com", true, null);
+        verify(productService).managerReview(1L, "mg@x.com", true, null);
+    }
+
+    @Test
+    void specialistReviewV1_delegates() {
+        when(productService.specialistReview(eq(1L), eq("sp@x.com"), anyBoolean(), any())).thenReturn(product(1L));
+
+        controller.specialistReviewV1(1L, new ProductController.ReviewRequest(true, null),
+                auth("sp@x.com", "PRODUCT_SPECIALIST"));
+
+        verify(productService).specialistReview(1L, "sp@x.com", true, null);
+    }
+
+    @Test
+    void salesmanReviewV1_delegates() {
+        when(productService.salesmanReview(eq(1L), eq("sl@x.com"), anyBoolean(), any())).thenReturn(product(1L));
+
+        controller.salesmanReviewV1(1L, new ProductController.ReviewRequest(false, "no"),
+                auth("sl@x.com", "SALESMAN"));
+
+        verify(productService).salesmanReview(1L, "sl@x.com", false, "no");
     }
 
     @Test

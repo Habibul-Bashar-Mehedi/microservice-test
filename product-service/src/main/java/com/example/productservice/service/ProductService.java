@@ -5,9 +5,7 @@ import com.example.productservice.entity.Product;
 import com.example.productservice.entity.ProductStatus;
 import com.example.productservice.repository.ProductRepository;
 import java.math.BigDecimal;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,29 +19,19 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ProductService {
 
-    private static final BigDecimal PRICE_LOW = new BigDecimal("100");
-    private static final BigDecimal PRICE_MEDIUM = new BigDecimal("200");
-    private static final BigDecimal PRICE_HIGH = new BigDecimal("500");
-
-    private static final Set<Category> DIRECT_APPROVE_CATEGORIES =
-            EnumSet.of(Category.CHAL, Category.DAL, Category.ATA, Category.MOYDA);
-    private static final Set<Category> MAINTAINER_ONLY_CATEGORIES =
-            EnumSet.of(Category.CHINI, Category.MOSHLA);
-
     private final ProductRepository productRepository;
     private final ProductSearchService productSearchService;
     private final ProductNotificationService productNotificationService;
 
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
-    public Product create(Product product, String managerEmail) {
+    public Product create(Product product, String maintainerEmail) {
         validateProductInput(product);
         product.setCategory(normalizeCategory(product.getCategory()));
-        product.setStatus(initialStatus(product));
-        product.setCreatedBy(managerEmail);
+        product.setStatus(ProductStatus.PENDING_MANAGER);
+        product.setCreatedBy(maintainerEmail);
         product.setRejectionReason(null);
         product.setRejectedByRole(null);
-        product.setMaintainerReviewer(null);
-        product.setAdminReviewer(null);
+        clearReviewers(product);
         try {
             Product saved = productRepository.save(product);
             productSearchService.index(saved);
@@ -81,17 +69,18 @@ public class ProductService {
 
     @Transactional
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
-    public Product resubmit(Long id, Product updated, String managerEmail) {
+    public Product resubmit(Long id, Product updated, String maintainerEmail) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Product not found: " + id));
 
-        if (!managerEmail.equalsIgnoreCase(product.getCreatedBy())) {
+        if (!maintainerEmail.equalsIgnoreCase(product.getCreatedBy())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "You can only resubmit your own products");
         }
-        if (product.getStatus() != ProductStatus.REJECTED_BY_MAINTAINER
-                && product.getStatus() != ProductStatus.REJECTED_BY_ADMIN) {
+
+        ProductStatus target = resubmitTarget(product.getStatus());
+        if (target == null) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Only rejected products can be resubmitted");
         }
@@ -105,7 +94,7 @@ public class ProductService {
             if (updated.getCategory() != null) {
                 product.setCategory(updated.getCategory());
             }
-            product.setStatus(initialStatus(product));
+            product.setStatus(target);
             product.setRejectionReason(null);
             product.setRejectedByRole(null);
             Product saved = productRepository.save(product);
@@ -121,37 +110,85 @@ public class ProductService {
 
     @Transactional
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
-    public Product maintainerReview(Long id, String maintainerEmail, boolean approved, String reason) {
-        Product product = requireStatus(id, ProductStatus.PENDING_MAINTAINER);
-        product.setMaintainerReviewer(maintainerEmail);
+    public Product managerReview(Long id, String managerEmail, boolean approved, String reason) {
+        Product product = requireStatus(id, ProductStatus.PENDING_MANAGER);
+        product.setManagerReviewer(managerEmail);
 
         if (approved) {
-            boolean adminRequired = requiresAdminApproval(product);
-            product.setStatus(adminRequired ? ProductStatus.PENDING_ADMIN : ProductStatus.APPROVED);
+            product.setStatus(ProductStatus.PENDING_PRODUCT_SPECIALIST);
             product.setRejectionReason(null);
             product.setRejectedByRole(null);
             Product saved = productRepository.save(product);
-            if (adminRequired) {
-                productNotificationService.notify(null, "ADMIN", saved.getId(), saved.getName(),
-                        "Product '" + saved.getName() + "' was accepted by maintainer " + maintainerEmail
-                                + " and is awaiting your final approval.");
-            } else {
-                productNotificationService.notify(saved.getCreatedBy(), null, saved.getId(), saved.getName(),
-                        "Product '" + saved.getName() + "' was approved by maintainer "
-                                + maintainerEmail + ".");
-            }
+            notifyRole("PRODUCT_SPECIALIST", saved,
+                    "Product '" + saved.getName() + "' was accepted by manager " + managerEmail
+                            + " and is awaiting your review.");
             productSearchService.index(saved);
             return saved;
         }
 
         requireReason(reason);
-        product.setStatus(ProductStatus.REJECTED_BY_MAINTAINER);
-        product.setRejectionReason(reason);
-        product.setRejectedByRole("MAINTAINER");
-        Product saved = productRepository.save(product);
-        productNotificationService.notify(saved.getCreatedBy(), null, saved.getId(), saved.getName(),
-                "Product '" + saved.getName() + "' was rejected by maintainer " + maintainerEmail
+        Product saved = reject(product, ProductStatus.REJECTED_BY_MANAGER, "MANAGER", reason);
+        notifyEmail(product.getCreatedBy(), saved,
+                "Product '" + saved.getName() + "' was rejected by manager " + managerEmail
                         + ". Reason: " + reason);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
+    public Product specialistReview(Long id, String specialistEmail, boolean approved, String reason) {
+        Product product = requireStatus(id, ProductStatus.PENDING_PRODUCT_SPECIALIST);
+        product.setSpecialistReviewer(specialistEmail);
+
+        if (approved) {
+            product.setStatus(ProductStatus.PENDING_SALESMAN);
+            product.setRejectionReason(null);
+            product.setRejectedByRole(null);
+            Product saved = productRepository.save(product);
+            notifyRole("SALESMAN", saved,
+                    "Product '" + saved.getName() + "' was accepted by product specialist "
+                            + specialistEmail + " and is awaiting your review.");
+            productSearchService.index(saved);
+            return saved;
+        }
+
+        requireReason(reason);
+        Product saved = reject(product, ProductStatus.REJECTED_BY_PRODUCT_SPECIALIST, "PRODUCT_SPECIALIST",
+                reason);
+        String message = "Product '" + saved.getName() + "' was rejected by product specialist "
+                + specialistEmail + ". Reason: " + reason;
+        notifyEmail(saved.getCreatedBy(), saved, message);
+        notifyEmail(saved.getManagerReviewer(), saved, message);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
+    public Product salesmanReview(Long id, String salesmanEmail, boolean approved, String reason) {
+        Product product = requireStatus(id, ProductStatus.PENDING_SALESMAN);
+        product.setSalesmanReviewer(salesmanEmail);
+
+        if (approved) {
+            product.setStatus(ProductStatus.PENDING_ADMIN);
+            product.setRejectionReason(null);
+            product.setRejectedByRole(null);
+            Product saved = productRepository.save(product);
+            notifyRole("ADMIN", saved,
+                    "Product '" + saved.getName() + "' was accepted by salesman " + salesmanEmail
+                            + " and is awaiting your final review.");
+            productSearchService.index(saved);
+            return saved;
+        }
+
+        requireReason(reason);
+        Product saved = reject(product, ProductStatus.REJECTED_BY_SALESMAN, "SALESMAN", reason);
+        String message = "Product '" + saved.getName() + "' was rejected by salesman " + salesmanEmail
+                + ". Reason: " + reason;
+        notifyEmail(saved.getCreatedBy(), saved, message);
+        notifyEmail(saved.getManagerReviewer(), saved, message);
+        notifyEmail(saved.getSpecialistReviewer(), saved, message);
         productSearchService.index(saved);
         return saved;
     }
@@ -167,28 +204,61 @@ public class ProductService {
             product.setRejectionReason(null);
             product.setRejectedByRole(null);
             Product saved = productRepository.save(product);
-            notifyManagerAndMaintainer(saved, "Product '" + saved.getName()
-                    + "' was finally approved by admin " + adminEmail + ".");
+            String message = "Product '" + saved.getName() + "' was finally approved by admin "
+                    + adminEmail + ".";
+            notifyApprovalChain(saved, message);
             productSearchService.index(saved);
             return saved;
         }
 
         requireReason(reason);
-        product.setStatus(ProductStatus.REJECTED_BY_ADMIN);
-        product.setRejectionReason(reason);
-        product.setRejectedByRole("ADMIN");
-        Product saved = productRepository.save(product);
-        notifyManagerAndMaintainer(saved, "Product '" + saved.getName()
-                + "' was rejected by admin " + adminEmail + ". Reason: " + reason);
+        Product saved = reject(product, ProductStatus.REJECTED_BY_ADMIN, "ADMIN", reason);
+        String message = "Product '" + saved.getName() + "' was rejected by admin " + adminEmail
+                + ". Reason: " + reason;
+        notifyApprovalChain(saved, message);
         productSearchService.index(saved);
         return saved;
     }
 
-    private void notifyManagerAndMaintainer(Product product, String message) {
-        productNotificationService.notify(product.getCreatedBy(), null,
-                product.getId(), product.getName(), message);
-        productNotificationService.notify(product.getMaintainerReviewer(), null,
-                product.getId(), product.getName(), message);
+    private Product reject(Product product, ProductStatus status, String role, String reason) {
+        product.setStatus(status);
+        product.setRejectionReason(reason);
+        product.setRejectedByRole(role);
+        return productRepository.save(product);
+    }
+
+    private void notifyApprovalChain(Product product, String message) {
+        notifyEmail(product.getCreatedBy(), product, message);
+        notifyEmail(product.getManagerReviewer(), product, message);
+        notifyEmail(product.getSpecialistReviewer(), product, message);
+        notifyEmail(product.getSalesmanReviewer(), product, message);
+    }
+
+    private void notifyEmail(String email, Product product, String message) {
+        if (email != null && !email.isBlank()) {
+            productNotificationService.notify(email, null, product.getId(), product.getName(), message);
+        }
+    }
+
+    private void notifyRole(String role, Product product, String message) {
+        productNotificationService.notify(null, role, product.getId(), product.getName(), message);
+    }
+
+    private void clearReviewers(Product product) {
+        product.setManagerReviewer(null);
+        product.setSpecialistReviewer(null);
+        product.setSalesmanReviewer(null);
+        product.setAdminReviewer(null);
+    }
+
+    private ProductStatus resubmitTarget(ProductStatus status) {
+        return switch (status) {
+            case REJECTED_BY_MANAGER -> ProductStatus.PENDING_MANAGER;
+            case REJECTED_BY_PRODUCT_SPECIALIST -> ProductStatus.PENDING_PRODUCT_SPECIALIST;
+            case REJECTED_BY_SALESMAN -> ProductStatus.PENDING_SALESMAN;
+            case REJECTED_BY_ADMIN -> ProductStatus.PENDING_ADMIN;
+            default -> null;
+        };
     }
 
     private Product requireStatus(Long id, ProductStatus expected) {
@@ -225,33 +295,6 @@ public class ProductService {
 
     private Category normalizeCategory(Category category) {
         return category == null ? Category.OTHER : category;
-    }
-
-    private ProductStatus initialStatus(Product product) {
-        Category category = normalizeCategory(product.getCategory());
-        if (DIRECT_APPROVE_CATEGORIES.contains(category)) {
-            return ProductStatus.APPROVED;
-        }
-        if (MAINTAINER_ONLY_CATEGORIES.contains(category)) {
-            return ProductStatus.PENDING_MAINTAINER;
-        }
-
-        BigDecimal price = product.getPrice();
-        if (price.compareTo(PRICE_LOW) >= 0 && price.compareTo(PRICE_MEDIUM) <= 0) {
-            return ProductStatus.APPROVED;
-        }
-        return ProductStatus.PENDING_MAINTAINER;
-    }
-
-    private boolean requiresAdminApproval(Product product) {
-        Category category = normalizeCategory(product.getCategory());
-        if (DIRECT_APPROVE_CATEGORIES.contains(category)
-                || MAINTAINER_ONLY_CATEGORIES.contains(category)) {
-            return false;
-        }
-
-        BigDecimal price = product.getPrice();
-        return price.compareTo(PRICE_LOW) < 0 || price.compareTo(PRICE_HIGH) > 0;
     }
 
     @Transactional
