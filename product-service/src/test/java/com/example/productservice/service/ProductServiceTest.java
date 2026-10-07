@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.productservice.entity.Category;
 import com.example.productservice.entity.Product;
 import com.example.productservice.entity.ProductStatus;
 import com.example.productservice.repository.ProductRepository;
@@ -73,11 +74,90 @@ class ProductServiceTest {
         verify(productSearchService).index(saved);
     }
 
+    @Test
+    void create_priceBetween100And200_isDirectlyApproved() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("150.00"))
+                .availableQuantity(2).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
+        assertThat(saved.getCategory()).isEqualTo(Category.OTHER);
+    }
+
+    @Test
+    void create_price200_isDirectlyApproved() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("200.00"))
+                .availableQuantity(2).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
+    }
+
+    @Test
+    void create_priceBetween200And500_goesToMaintainer() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("350.00"))
+                .availableQuantity(2).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
+    }
+
+    @Test
+    void create_priceAbove500_goesToMaintainerBeforeAdmin() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("501.00"))
+                .availableQuantity(2).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
+    }
+
+    @Test
+    void create_priceBelow100_fallsBackToAdminArm() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("99.99"))
+                .availableQuantity(2).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
+    }
+
+    @Test
+    void create_stapleCategory_isDirectlyApprovedRegardlessOfHighPrice() {
+        stubSave();
+        Product request = Product.builder().name("Chal").price(new BigDecimal("900.00"))
+                .availableQuantity(2).category(Category.CHAL).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.APPROVED);
+    }
+
+    @Test
+    void create_maintainerOnlyCategory_goesToMaintainerRegardlessOfLowPrice() {
+        stubSave();
+        Product request = Product.builder().name("Chini").price(new BigDecimal("50.00"))
+                .availableQuantity(2).category(Category.CHINI).build();
+
+        Product saved = productService.create(request, "manager@example.com");
+
+        assertThat(saved.getStatus()).isEqualTo(ProductStatus.PENDING_MAINTAINER);
+    }
+
     // ---- maintainer review ----
 
     @Test
     void maintainerReview_accept_movesToPendingAdminAndNotifiesAdmin() {
         Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+        p.setPrice(new BigDecimal("600.00"));
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
 
@@ -86,6 +166,35 @@ class ProductServiceTest {
         assertThat(result.getStatus()).isEqualTo(ProductStatus.PENDING_ADMIN);
         assertThat(result.getMaintainerReviewer()).isEqualTo("maint@example.com");
         verify(productNotificationService).notify(isNull(), eq("ADMIN"), eq(1L), eq("Phone"), anyString());
+    }
+
+    @Test
+    void maintainerReview_accept_withoutAdminRequired_approvesDirectly() {
+        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+        p.setPrice(new BigDecimal("300.00"));
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.maintainerReview(1L, "maint@example.com", true, null);
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.APPROVED);
+        verify(productNotificationService).notify(eq("manager@example.com"), isNull(), eq(1L),
+                eq("Phone"), anyString());
+        verify(productNotificationService, never()).notify(isNull(), eq("ADMIN"), anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void maintainerReview_maintainerOnlyCategory_approvesWithoutAdmin() {
+        Product p = product(1L, ProductStatus.PENDING_MAINTAINER);
+        p.setCategory(Category.MOSHLA);
+        p.setPrice(new BigDecimal("900.00"));
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.maintainerReview(1L, "maint@example.com", true, null);
+
+        assertThat(result.getStatus()).isEqualTo(ProductStatus.APPROVED);
+        verify(productNotificationService, never()).notify(isNull(), eq("ADMIN"), anyLong(), anyString(), anyString());
     }
 
     @Test
@@ -182,7 +291,7 @@ class ProductServiceTest {
         when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         stubSave();
 
-        Product updated = Product.builder().name("Phone v2").price(new BigDecimal("120.00"))
+        Product updated = Product.builder().name("Phone v2").price(new BigDecimal("300.00"))
                 .availableQuantity(20).build();
 
         Product result = productService.resubmit(1L, updated, "manager@example.com");

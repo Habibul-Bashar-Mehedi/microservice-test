@@ -1,10 +1,13 @@
 package com.example.productservice.service;
 
+import com.example.productservice.entity.Category;
 import com.example.productservice.entity.Product;
 import com.example.productservice.entity.ProductStatus;
 import com.example.productservice.repository.ProductRepository;
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -18,6 +21,15 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ProductService {
 
+    private static final BigDecimal PRICE_LOW = new BigDecimal("100");
+    private static final BigDecimal PRICE_MEDIUM = new BigDecimal("200");
+    private static final BigDecimal PRICE_HIGH = new BigDecimal("500");
+
+    private static final Set<Category> DIRECT_APPROVE_CATEGORIES =
+            EnumSet.of(Category.CHAL, Category.DAL, Category.ATA, Category.MOYDA);
+    private static final Set<Category> MAINTAINER_ONLY_CATEGORIES =
+            EnumSet.of(Category.CHINI, Category.MOSHLA);
+
     private final ProductRepository productRepository;
     private final ProductSearchService productSearchService;
     private final ProductNotificationService productNotificationService;
@@ -25,7 +37,8 @@ public class ProductService {
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
     public Product create(Product product, String managerEmail) {
         validateProductInput(product);
-        product.setStatus(ProductStatus.PENDING_MAINTAINER);
+        product.setCategory(normalizeCategory(product.getCategory()));
+        product.setStatus(initialStatus(product));
         product.setCreatedBy(managerEmail);
         product.setRejectionReason(null);
         product.setRejectedByRole(null);
@@ -89,7 +102,10 @@ public class ProductService {
             product.setName(updated.getName());
             product.setPrice(updated.getPrice());
             product.setAvailableQuantity(updated.getAvailableQuantity());
-            product.setStatus(ProductStatus.PENDING_MAINTAINER);
+            if (updated.getCategory() != null) {
+                product.setCategory(updated.getCategory());
+            }
+            product.setStatus(initialStatus(product));
             product.setRejectionReason(null);
             product.setRejectedByRole(null);
             Product saved = productRepository.save(product);
@@ -110,13 +126,20 @@ public class ProductService {
         product.setMaintainerReviewer(maintainerEmail);
 
         if (approved) {
-            product.setStatus(ProductStatus.PENDING_ADMIN);
+            boolean adminRequired = requiresAdminApproval(product);
+            product.setStatus(adminRequired ? ProductStatus.PENDING_ADMIN : ProductStatus.APPROVED);
             product.setRejectionReason(null);
             product.setRejectedByRole(null);
             Product saved = productRepository.save(product);
-            productNotificationService.notify(null, "ADMIN", saved.getId(), saved.getName(),
-                    "Product '" + saved.getName() + "' was accepted by maintainer " + maintainerEmail
-                            + " and is awaiting your final approval.");
+            if (adminRequired) {
+                productNotificationService.notify(null, "ADMIN", saved.getId(), saved.getName(),
+                        "Product '" + saved.getName() + "' was accepted by maintainer " + maintainerEmail
+                                + " and is awaiting your final approval.");
+            } else {
+                productNotificationService.notify(saved.getCreatedBy(), null, saved.getId(), saved.getName(),
+                        "Product '" + saved.getName() + "' was approved by maintainer "
+                                + maintainerEmail + ".");
+            }
             productSearchService.index(saved);
             return saved;
         }
@@ -198,6 +221,37 @@ public class ProductService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Available quantity cannot be negative");
         }
+    }
+
+    private Category normalizeCategory(Category category) {
+        return category == null ? Category.OTHER : category;
+    }
+
+    private ProductStatus initialStatus(Product product) {
+        Category category = normalizeCategory(product.getCategory());
+        if (DIRECT_APPROVE_CATEGORIES.contains(category)) {
+            return ProductStatus.APPROVED;
+        }
+        if (MAINTAINER_ONLY_CATEGORIES.contains(category)) {
+            return ProductStatus.PENDING_MAINTAINER;
+        }
+
+        BigDecimal price = product.getPrice();
+        if (price.compareTo(PRICE_LOW) >= 0 && price.compareTo(PRICE_MEDIUM) <= 0) {
+            return ProductStatus.APPROVED;
+        }
+        return ProductStatus.PENDING_MAINTAINER;
+    }
+
+    private boolean requiresAdminApproval(Product product) {
+        Category category = normalizeCategory(product.getCategory());
+        if (DIRECT_APPROVE_CATEGORIES.contains(category)
+                || MAINTAINER_ONLY_CATEGORIES.contains(category)) {
+            return false;
+        }
+
+        BigDecimal price = product.getPrice();
+        return price.compareTo(PRICE_LOW) < 0 || price.compareTo(PRICE_HIGH) > 0;
     }
 
     @Transactional

@@ -49,6 +49,11 @@ public class Product {
     @Column(nullable = false)
     private ProductStatus status = ProductStatus.PENDING_MAINTAINER;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", nullable = false)
+    private Category category = Category.OTHER;
+
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
