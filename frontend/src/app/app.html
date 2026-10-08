@@ -1,9 +1,14 @@
 <nav class="navbar">
-    <div class="navbar-brand">{{ title }}</div>
+    <div class="navbar-brand">
+        <img src="logo.svg" alt="Microservice UI" class="navbar-logo">
+    </div>
     @if (isAuthenticated) {
         <div class="navbar-links">
             @for (item of navItems; track item.link) {
                 <a [routerLink]="item.link" routerLinkActive="active">{{ item.label }}</a>
+            }
+            @if (canAccessApiDocs) {
+                <a routerLink="/services" routerLinkActive="active">API Docs</a>
             }
         </div>
         <div class="navbar-right">

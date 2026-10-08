@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/orders").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v2/orders").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v3/orders").hasAnyRole("USER", "ADMIN")

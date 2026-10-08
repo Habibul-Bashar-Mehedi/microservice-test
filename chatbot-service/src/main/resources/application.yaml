@@ -1,6 +1,19 @@
 server:
   port: 8085
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
 spring:
   application:
     name: chatbot-service

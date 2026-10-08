@@ -51,6 +51,8 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error", "/auth/google").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/auth/users/{email}/role").hasRole("ADMIN")
                         .anyRequest().authenticated())

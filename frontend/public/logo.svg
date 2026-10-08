@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Microservice UI">
+    <rect width="48" height="48" rx="11" fill="#1f2933"/>
+    <g stroke="#4fa3f7" stroke-width="2" stroke-linecap="round" opacity="0.85">
+        <line x1="24" y1="13" x2="12" y2="33"/>
+        <line x1="24" y1="13" x2="36" y2="33"/>
+        <line x1="12" y1="33" x2="36" y2="33"/>
+    </g>
+    <circle cx="24" cy="13" r="5" fill="#4fa3f7"/>
+    <circle cx="12" cy="33" r="5" fill="#4fa3f7"/>
+    <circle cx="36" cy="33" r="5" fill="#4fa3f7"/>
+    <circle cx="24" cy="34" r="3.5" fill="#0a7d32"/>
+</svg>

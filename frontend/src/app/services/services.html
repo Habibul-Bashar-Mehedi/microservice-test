@@ -1,0 +1,27 @@
+<h1>Services</h1>
+<p class="hub-sub">
+    Swagger UI, OpenAPI spec and health for every microservice.
+    <button type="button" (click)="refresh()">Refresh status</button>
+</p>
+
+<div class="service-grid">
+    @for (service of services(); track service.port) {
+        <div class="service-card">
+            <div class="service-head">
+                <h2>{{ service.name }}</h2>
+                <span
+                    class="badge"
+                    [class.up]="service.status === 'UP'"
+                    [class.down]="service.status === 'DOWN'"
+                >{{ service.status }}</span>
+            </div>
+            <p class="service-desc">{{ service.desc }}</p>
+            <p class="service-port">localhost:{{ service.port }}</p>
+            <div class="service-links">
+                <a [href]="swaggerUrl(service)" target="_blank" rel="noopener">Swagger UI</a>
+                <a [href]="openApiUrl(service)" target="_blank" rel="noopener">OpenAPI</a>
+                <a [href]="healthUrl(service)" target="_blank" rel="noopener">Health</a>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,80 @@
+.hub-sub {
+    color: #52606d;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.service-card {
+    border: 1px solid #cbd2d9;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.service-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.service-head h2 {
+    font-size: 1.05em;
+    margin: 0;
+}
+
+.badge {
+    font-size: 0.75em;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #e0e0e0;
+    color: #52606d;
+    text-transform: uppercase;
+}
+
+.badge.up {
+    background: #e6f4ea;
+    color: #0a7d32;
+}
+
+.badge.down {
+    background: #fce8e6;
+    color: #b00020;
+}
+
+.service-desc {
+    color: #52606d;
+    margin: 8px 0 4px;
+}
+
+.service-port {
+    font-family: monospace;
+    color: #323f4b;
+    margin: 0 0 10px;
+}
+
+.service-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.service-links a {
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 0.85em;
+}
+
+.service-links a:hover {
+    background: #1557b0;
+}

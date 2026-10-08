@@ -1,0 +1,27 @@
+.git
+.idea
+.gitignore
+*.iml
+out/
+
+# Gradle build output and caches (rebuilt inside the image)
+**/build/
+**/.gradle/
+.gradle/
+caches/
+wrapper/
+daemon/
+native/
+.tmp/
+
+# Node / Angular (frontend has its own .dockerignore)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Local secrets (never bake API keys into images)
+local-secrets.yaml
+**/local-secrets.yaml
+
+# Docs
+*.md

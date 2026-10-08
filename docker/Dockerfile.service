@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+# Generic multi-stage build for any Spring Boot service in this repository.
+# Each service is an independent Gradle project living in its own directory, so the
+# service directory is selected at build time:
+#
+#   docker build -f docker/Dockerfile.service --build-arg SERVICE=auth-service .
+#
+# The build context must be the repository root.
+
+FROM eclipse-temurin:25-jdk AS build
+ARG SERVICE
+WORKDIR /workspace
+COPY ${SERVICE}/ ./
+RUN --mount=type=cache,target=/root/.gradle,id=gradle \
+    chmod +x gradlew && ./gradlew --no-daemon clean bootJar
+
+FROM eclipse-temurin:25-jre AS runtime
+ARG SERVICE
+ENV SERVICE=${SERVICE} \
+    JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
+WORKDIR /app
+COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

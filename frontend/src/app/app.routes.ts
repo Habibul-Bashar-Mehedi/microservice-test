@@ -10,10 +10,16 @@ import { ProductComponent } from './product/product';
 import { NotificationsComponent } from './notifications/notifications';
 import { OrderComponent } from './order/order';
 import { LogComponent } from './log/log';
+import { ServicesComponent } from './services/services';
 
 export const routes: Routes = [
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     { path: 'login', component: LoginComponent },
+    {
+        path: 'services',
+        component: ServicesComponent,
+        canActivate: [authGuard, roleGuard('ADMIN', 'MANAGER', 'MAINTAINER', 'PRODUCT_SPECIALIST', 'SALESMAN')]
+    },
     { path: 'dashboard', component: DashboardComponent, canActivate: [dashboardGuard] },
 
     { path: 'cart', component: CartComponent, canActivate: [authGuard, roleGuard('USER')] },

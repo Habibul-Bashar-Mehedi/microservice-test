@@ -80,6 +80,12 @@ export class App {
         return this.auth.getUser()?.role ?? 'USER';
     }
 
+    private static readonly STAFF_ROLES = ['ADMIN', 'MANAGER', 'MAINTAINER', 'PRODUCT_SPECIALIST', 'SALESMAN'];
+
+    get canAccessApiDocs(): boolean {
+        return App.STAFF_ROLES.includes(this.role);
+    }
+
     get searchPlaceholder(): string {
         switch (this.context()) {
             case 'users':

@@ -32,11 +32,16 @@ nav {
 }
 
 .navbar-brand {
-    color: #fff;
-    font-size: 1.25em;
-    font-weight: bold;
+    display: flex;
+    align-items: center;
     white-space: nowrap;
     flex: 0 0 auto;
+}
+
+.navbar-logo {
+    height: 34px;
+    width: 34px;
+    display: block;
 }
 
 .navbar-links a {
