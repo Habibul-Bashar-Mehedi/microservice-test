@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-services=(auth-service user-service product-service order-service log-service)
+services=(auth-service user-service product-service order-service log-service chatbot-service)
 
 for s in "${services[@]}"; do
     echo ">>> tests + per-service report: $s"

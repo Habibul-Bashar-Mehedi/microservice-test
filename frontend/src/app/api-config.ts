@@ -7,5 +7,6 @@ export const API = {
     orderV1: 'http://localhost:8083/v1',
     orderV2: 'http://localhost:8083/v2',
     orderV3: 'http://localhost:8083/v3',
-    logV1: 'http://localhost:8084/v1'
+    logV1: 'http://localhost:8084/v1',
+    chatV1: 'http://localhost:8085/v1'
 };

@@ -1,0 +1,14 @@
+.table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.table-scroll table {
+    table-layout: auto;
+    width: 100%;
+}
+
+td input,
+td select {
+    max-width: 100%;
+}

@@ -1,0 +1,129 @@
+.chatbot {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+    font-size: 14px;
+}
+
+.chat-launcher {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.chat-panel {
+    width: 340px;
+    height: 460px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #1a73e8;
+    color: #fff;
+}
+
+.chat-role {
+    display: block;
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+.chat-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: #f5f7fb;
+}
+
+.chat-message {
+    margin-bottom: 8px;
+    display: flex;
+}
+
+.chat-message p {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #e8eaed;
+    max-width: 85%;
+    white-space: pre-wrap;
+}
+
+.chat-message.from-user {
+    justify-content: flex-end;
+}
+
+.chat-message.from-user p {
+    background: #1a73e8;
+    color: #fff;
+}
+
+.chat-typing {
+    font-style: italic;
+    color: #5f6368;
+}
+
+.chat-confirm {
+    padding: 12px;
+    border-top: 1px solid #e0e0e0;
+    background: #fffbe6;
+}
+
+.chat-confirm-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.chat-input {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.chat-input button,
+.chat-confirm-actions button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #1a73e8;
+    color: #fff;
+    cursor: pointer;
+}
+
+.chat-confirm-actions button.secondary {
+    background: #9aa0a6;
+}

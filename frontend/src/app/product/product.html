@@ -40,6 +40,7 @@
 
 @if (feature === 'list') {
     <button type="button" (click)="load()">Refresh</button>
+    <div class="table-scroll">
     <table>
         <thead>
         <tr>
@@ -108,10 +109,12 @@
             }
         </tbody>
     </table>
+    </div>
 }
 
 @if (feature === 'pending') {
     <button type="button" (click)="load()">Refresh</button>
+    <div class="table-scroll">
     <table>
         <thead>
         <tr>
@@ -153,10 +156,12 @@
             }
         </tbody>
     </table>
+    </div>
 }
 
 @if (feature === 'stock' && role === 'ADMIN') {
     <button type="button" (click)="load()">Refresh</button>
+    <div class="table-scroll">
     <table>
         <thead>
         <tr>
@@ -196,4 +201,5 @@
             }
         </tbody>
     </table>
+    </div>
 }

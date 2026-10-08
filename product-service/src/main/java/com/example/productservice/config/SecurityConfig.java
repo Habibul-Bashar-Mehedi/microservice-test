@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/v1/products").hasRole("MAINTAINER")
+                        .requestMatchers(HttpMethod.POST, "/v1/products").hasAnyRole("MAINTAINER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/{id}").hasRole("MAINTAINER")
                         .requestMatchers(HttpMethod.GET, "/v1/products/mine").hasRole("MAINTAINER")
                         .requestMatchers(HttpMethod.GET, "/v1/products/pending/manager").hasRole("MANAGER")
@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/products/all")
                         .hasAnyRole("MAINTAINER", "MANAGER", "PRODUCT_SPECIALIST", "SALESMAN", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/v1/products/{id}/admin/review").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/quantity").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/quantity").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/add-quantity").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/price").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/name").hasRole("ADMIN")

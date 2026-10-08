@@ -1,0 +1,42 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: chatbot-service
+
+  config:
+    # Load the API key from a local, git-ignored file if present.
+    import: optional:classpath:local-secrets.yaml
+
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        register: true
+        prefer-ip-address: true
+        register-health-check: false
+    loadbalancer:
+      enabled: true
+
+jwt:
+  secret: 7a4f0c9b2e5d8a1c3f6b9e2d4a7c0f3b6e9a2d4c7f0b3e6a9d2c4f7b0e3a6c
+  issuer: auth-service
+
+# OpenCode Go (OpenAI-compatible). The key comes from
+# local-secrets.yaml (git-ignored) or the OPENCODE_API_KEY env var.
+llm:
+  base-url: https://opencode.ai/zen/go/v1
+  model: longcat-2.5-preview-free
+  max-tool-iterations: 6
+
+services:
+  product-service:
+    base-url: http://product-service
+  user-service:
+    base-url: http://user-service
+  order-service:
+    base-url: http://order-service
+  log-service:
+    base-url: http://log-service

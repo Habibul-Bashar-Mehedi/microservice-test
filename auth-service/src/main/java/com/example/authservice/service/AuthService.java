@@ -91,15 +91,35 @@ public class AuthService {
     }
 
     private UserProfile registerInUserService(String name, String email, String role, String accessToken) {
-        return circuitBreakerFactory.create("userService").run(
-                () -> doRegisterInUserService(name, email, role, accessToken),
-                throwable -> {
-                    throw new ResponseStatusException(
-                            HttpStatus.SERVICE_UNAVAILABLE,
-                            "user-service is unavailable: " + throwable.getMessage(),
-                            throwable
-                    );
-                });
+        ResponseStatusException lastFailure = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                return circuitBreakerFactory.create("userService").run(
+                        () -> doRegisterInUserService(name, email, role, accessToken),
+                        throwable -> {
+                            if (throwable instanceof ResponseStatusException responseStatusException) {
+                                throw responseStatusException;
+                            }
+                            throw new ResponseStatusException(
+                                    HttpStatus.SERVICE_UNAVAILABLE,
+                                    "user-service is unavailable: " + throwable.getMessage(),
+                                    throwable
+                            );
+                        });
+            } catch (ResponseStatusException e) {
+                if (e.getStatusCode().is4xxClientError()) {
+                    throw e;
+                }
+                lastFailure = e;
+                try {
+                    Thread.sleep(250L * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+        throw lastFailure;
     }
 
     private UserProfile doRegisterInUserService(String name, String email, String role, String accessToken) {

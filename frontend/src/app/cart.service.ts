@@ -1,5 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
+import { API } from './api-config';
+import { AuthService } from './auth.service';
 import { Product } from './models';
 
 export interface CartItem {
@@ -11,59 +14,121 @@ export interface CartItem {
     selected: boolean;
 }
 
-const CART_KEY = 'cart_items';
-
 @Injectable({providedIn: 'root'})
 export class CartService {
 
-    items = signal<CartItem[]>(this.load());
+    private http = inject(HttpClient);
+    private auth = inject(AuthService);
+
+    items = signal<CartItem[]>([]);
+
+    private userId: number | null = null;
+    private userIdPending: Promise<number | null> | null = null;
+
+    constructor() {
+        this.refresh();
+    }
+
+    private get base() {
+        return API.orderV1;
+    }
+
+    private resolveUserId(): Promise<number | null> {
+        if (this.userId != null) {
+            return Promise.resolve(this.userId);
+        }
+        if (this.userIdPending) {
+            return this.userIdPending;
+        }
+        const email = this.auth.getUser()?.email;
+        if (!email) {
+            return Promise.resolve(null);
+        }
+        this.userIdPending = new Promise(resolve => {
+            this.http.get<{id: number}>(API.userV1 + '/users/email/' + encodeURIComponent(email)).subscribe({
+                next: profile => {
+                    this.userId = profile.id;
+                    resolve(profile.id);
+                },
+                error: () => resolve(null)
+            });
+        });
+        return this.userIdPending;
+    }
+
+    refresh() {
+        this.resolveUserId().then(id => {
+            if (id == null) {
+                return;
+            }
+            this.http.get<CartItem[]>(this.base + '/cart?userId=' + id).subscribe({
+                next: data => this.items.set(data.map(i => ({
+                    productId: i.productId,
+                    name: i.name,
+                    price: Number(i.price),
+                    quantity: i.quantity,
+                    availableQuantity: i.availableQuantity,
+                    selected: true
+                }))),
+                error: () => {}
+            });
+        });
+    }
 
     add(product: Product, quantity: number) {
-        const existing = this.items().find(i => i.productId === product.id);
-        let next: CartItem[];
-        if (existing) {
-            next = this.items().map(i =>
-                i.productId === product.id
-                    ? {...i, quantity: Math.min(i.quantity + quantity, product.availableQuantity), selected: true}
-                    : i
-            );
-        } else {
-            next = [...this.items(), {
+        this.resolveUserId().then(id => {
+            if (id == null) {
+                return;
+            }
+            this.http.post(this.base + '/cart/items', {
+                userId: id,
                 productId: product.id,
                 name: product.name,
                 price: product.price,
                 quantity,
-                availableQuantity: product.availableQuantity,
-                selected: true
-            }];
-        }
-        this.save(next);
+                availableQuantity: product.availableQuantity
+            }).subscribe({next: () => this.refresh(), error: () => {}});
+        });
     }
 
     setQuantity(productId: number, quantity: number) {
-        this.save(this.items().map(i =>
-            i.productId === productId
-                ? {...i, quantity: Math.max(1, Math.min(quantity, i.availableQuantity))}
-                : i
-        ));
+        this.resolveUserId().then(id => {
+            if (id == null) {
+                return;
+            }
+            this.http.put(this.base + '/cart/items/' + productId
+                + '?userId=' + id + '&quantity=' + quantity, {})
+                .subscribe({next: () => this.refresh(), error: () => {}});
+        });
     }
 
     remove(productId: number) {
-        this.save(this.items().filter(i => i.productId !== productId));
-    }
-
-    toggleSelected(productId: number) {
-        this.save(this.items().map(i =>
-            i.productId === productId ? {...i, selected: !i.selected} : i
-        ));
-    }
-
-    setAllSelected(selected: boolean) {
-        this.save(this.items().map(i => ({...i, selected})));
+        this.resolveUserId().then(id => {
+            if (id == null) {
+                return;
+            }
+            this.http.delete(this.base + '/cart/items/' + productId + '?userId=' + id)
+                .subscribe({next: () => this.refresh(), error: () => {}});
+        });
     }
 
     clear() {
-        this.save([]);
+        this.resolveUserId().then(id => {
+            if (id == null) {
+                return;
+            }
+            this.http.delete(this.base + '/cart?userId=' + id)
+                .subscribe({next: () => this.items.set([]), error: () => {}});
+        });
+    }
+
+    toggleSelected(productId: number) {
+        this.items.update(list => list.map(i =>
+            i.productId === productId ? {...i, selected: !i.selected} : i));
+    }
+
+    setAllSelected(selected: boolean) {
+        this.items.update(list => list.map(i => ({...i, selected})));
     }
 
     total(): number {
@@ -81,19 +146,5 @@ export class CartService {
     isAllSelected(): boolean {
         const items = this.items();
         return items.length > 0 && items.every(i => i.selected);
-    }
-
-    private save(items: CartItem[]) {
-        localStorage.setItem(CART_KEY, JSON.stringify(items));
-        this.items.set(items);
-    }
-
-    private load(): CartItem[] {
-        try {
-            return (JSON.parse(localStorage.getItem(CART_KEY) || '[]') as CartItem[])
-                .map(i => ({...i, selected: i.selected ?? true}));
-        } catch {
-            return [];
-        }
     }
 }

@@ -10,7 +10,7 @@ jacoco {
     toolVersion = '0.8.15'
 }
 
-ext.serviceDirs = ['auth-service', 'user-service', 'product-service', 'order-service', 'log-service']
+ext.serviceDirs = ['auth-service', 'user-service', 'product-service', 'order-service', 'log-service', 'chatbot-service']
 
 // Aggregates the per-service JaCoCo execution data into a single report.
 // Run the services' tests first (or use ./jacoco-aggregate.sh).

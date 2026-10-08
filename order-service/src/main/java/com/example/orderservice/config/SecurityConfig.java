@@ -41,9 +41,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/orders/user/{userId}").hasRole("USER")
                         .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/cancel").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/v1/orders").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
-                        .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers(HttpMethod.POST, "/v2/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers(HttpMethod.POST, "/v3/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.POST, "/v1/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
+                        .requestMatchers(HttpMethod.POST, "/v2/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
+                        .requestMatchers(HttpMethod.POST, "/v3/orders/{id}/confirm").hasAnyRole("ADMIN", "MANAGER", "MAINTAINER")
+                        .requestMatchers("/v1/cart", "/v1/cart/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/v1/**", "/v2/**", "/v3/**").authenticated()
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

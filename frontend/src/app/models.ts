@@ -56,3 +56,11 @@ export interface MessageLog {
     email: string | null;
     createdAt: string;
 }
+
+export interface ChatResponse {
+    conversationId: string;
+    reply: string;
+    requiresConfirmation: boolean;
+    confirmationId?: string | null;
+    confirmationSummary?: string | null;
+}

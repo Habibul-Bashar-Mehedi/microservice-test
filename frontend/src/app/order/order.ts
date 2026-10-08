@@ -59,7 +59,7 @@ export class OrderComponent implements OnInit {
     }
 
     get canConfirm() {
-        return this.role === 'ADMIN' || this.role === 'MANAGER';
+        return this.role === 'ADMIN' || this.role === 'MANAGER' || this.role === 'MAINTAINER';
     }
 
     get base() {

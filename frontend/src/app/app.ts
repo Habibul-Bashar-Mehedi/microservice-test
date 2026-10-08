@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 
 import { API } from './api-config';
 import { AuthService } from './auth.service';
+import { ChatbotComponent } from './chat/chat';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
 import { MessageLog, Order, Product, User } from './models';
 
@@ -28,7 +29,7 @@ function matches(lower: string, ...values: (string | number | null | undefined)[
 
 @Component({
     selector: 'app-root',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, FormsModule, ConfirmDialogComponent],
+    imports: [RouterLink, RouterLinkActive, RouterOutlet, FormsModule, ConfirmDialogComponent, ChatbotComponent],
     templateUrl: './app.html',
     styleUrl: './app.css'
 })
@@ -102,6 +103,12 @@ export class App {
                     {label: 'Orders', link: '/order/list'}
                 ];
             case 'MANAGER':
+                return [
+                    {label: 'Product List', link: '/product/list'},
+                    {label: 'Pending Approvals', link: '/product/pending'},
+                    {label: 'Orders', link: '/order/list'},
+                    {label: 'Notifications', link: '/notifications'}
+                ];
             case 'PRODUCT_SPECIALIST':
             case 'SALESMAN':
                 return [

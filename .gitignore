@@ -15,3 +15,7 @@ native/
 frontend/node_modules/
 frontend/dist/
 frontend/.angular/
+
+# Local secrets (never commit API keys)
+local-secrets.yaml
+**/local-secrets.yaml

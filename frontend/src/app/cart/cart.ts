@@ -111,7 +111,7 @@ export class CartComponent implements OnInit {
                 this.message.set('Cart checked out. Orders placed successfully.');
                 this.isError.set(false);
                 this.checkingOut.set(false);
-                this.cart.clear();
+                items.forEach(item => this.cart.remove(item.productId));
                 return;
             }
 

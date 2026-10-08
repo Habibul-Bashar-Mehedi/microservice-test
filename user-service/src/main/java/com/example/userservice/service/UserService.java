@@ -120,21 +120,39 @@ public class UserService {
             return;
         }
 
-        circuitBreakerFactory.create("authService").run(
-                () -> {
-                    doSyncRoleWithAuthService(email, role, authHeader);
-                    return null;
-                },
-                throwable -> {
-                    if (throwable instanceof ResponseStatusException responseStatusException) {
-                        throw responseStatusException;
-                    }
-                    throw new ResponseStatusException(
-                            HttpStatus.SERVICE_UNAVAILABLE,
-                            "auth-service is unavailable: " + throwable.getMessage(),
-                            throwable
-                    );
-                });
+        ResponseStatusException lastFailure = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                circuitBreakerFactory.create("authService").run(
+                        () -> {
+                            doSyncRoleWithAuthService(email, role, authHeader);
+                            return null;
+                        },
+                        throwable -> {
+                            if (throwable instanceof ResponseStatusException responseStatusException) {
+                                throw responseStatusException;
+                            }
+                            throw new ResponseStatusException(
+                                    HttpStatus.SERVICE_UNAVAILABLE,
+                                    "auth-service is unavailable: " + throwable.getMessage(),
+                                    throwable
+                            );
+                        });
+                return;
+            } catch (ResponseStatusException e) {
+                if (e.getStatusCode().is4xxClientError()) {
+                    throw e;
+                }
+                lastFailure = e;
+                try {
+                    Thread.sleep(250L * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+        throw lastFailure;
     }
 
     private void doSyncRoleWithAuthService(String email, String role, String authHeader) {
