@@ -1,9 +1,18 @@
 {
-  "service": {
-    "name": "kafka",
-    "id": "kafka-1",
-    "address": "localhost",
-    "port": 9092,
-    "tags": ["kafka", "broker"]
-  }
+  "services": [
+    {
+      "name": "kafka",
+      "id": "kafka-internal",
+      "address": "kafka",
+      "port": 29092,
+      "tags": ["kafka", "broker"]
+    },
+    {
+      "name": "kafka",
+      "id": "kafka-host",
+      "address": "localhost",
+      "port": 9092,
+      "tags": ["kafka", "broker"]
+    }
+  ]
 }

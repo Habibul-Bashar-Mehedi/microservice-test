@@ -124,9 +124,11 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       <<: [*consul-env, *db-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/auth-service
     depends_on:
       consul:
         condition: service_healthy
@@ -144,9 +146,11 @@ services:
     restart: unless-stopped
     ports:
       - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       <<: [*consul-env, *db-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/user-service
     depends_on:
       consul:
         condition: service_healthy
@@ -164,9 +168,11 @@ services:
     restart: unless-stopped
     ports:
       - "8082:8082"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       <<: [*consul-env, *db-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/product-service
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
       SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: kafka:29092
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -191,9 +197,11 @@ services:
     restart: unless-stopped
     ports:
       - "8083:8083"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       <<: [*consul-env, *db-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/order-service
       SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: kafka:29092
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
@@ -215,9 +223,11 @@ services:
     restart: unless-stopped
     ports:
       - "8084:8084"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       <<: [*consul-env, *db-env]
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/log-db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/log-db
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     depends_on:
       consul:
