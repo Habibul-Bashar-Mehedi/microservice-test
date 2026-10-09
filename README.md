@@ -190,6 +190,96 @@ The SPA talks directly to the service ports (see `frontend/src/app/api-config.ts
 
 ---
 
+## Demo Environment & Automatic Test Data
+
+A fresh installation can be pre-populated with safe, representative test data so that
+products, orders, users and roles are available **immediately after startup** — no manual
+SQL is required.
+
+### How database initialization works
+
+1. **Schema** is managed by **Flyway** versioned migrations in each service
+   (`src/main/resources/db/migration/*.sql`). They always run.
+2. **Test/demo data** lives in a separate location: `src/main/resources/db/demo/*.sql`
+   (auth, user, product, order services). Flyway only scans this location when the
+   **`demo` Spring profile** is active (`application-demo.yaml` sets
+   `spring.flyway.locations: classpath:db/migration,classpath:db/demo`).
+
+Demo data is **never** inserted into production: the default profile and production
+deployments only use `db/migration`. Seeding is idempotent — Flyway records each migration
+once, and the SQL uses `ON CONFLICT ... DO NOTHING` as a second safeguard, so restarts and
+repeated startup never duplicate records.
+
+### Enabling demo data on a fresh install
+
+Start the services with the `demo` profile active. With the provided Compose stack:
+
+```bash
+SPRING_PROFILES_ACTIVE=demo docker compose up -d
+```
+
+or set `SPRING_PROFILES_ACTIVE=demo` in your environment / `.env` for the compose project.
+Running without the `demo` profile (or with `prod`) produces an empty database (schema only).
+
+### Test accounts (Google Sign-In)
+
+Authentication is **Google Sign-In only**. These demo emails are pre-registered with the
+correct role and `active = true` in both `auth-service` (`auth_users`) and `user-service`
+(`users`):
+
+| Role | Email | Note |
+|---|---|---|
+| Admin | `admin@example.com` | Full administration |
+| Maintainer | `maintainer@example.com` | Creates / resubmits products |
+| Manager | `manager@example.com` | Manager-stage approval |
+| Product Specialist | `specialist@example.com` | Specialist-stage approval |
+| Salesman | `salesman@example.com` | Salesman-stage approval |
+| User | `user@example.com` | Storefront / cart / orders |
+
+**Limitation:** Google only lets you sign in with an account you control, so to exercise a
+specific role you need a Google account whose email matches the row above. For quick local
+testing, log in once with any Google account (grabbing the `USER` role by default). To try
+the staff pages, either sign in with a matching email, or use Consul/API tooling to change a
+user's role. The frontend's login page shows the resolved role on the account menu.
+
+### What demo data is seeded
+
+- **auth-service** — six role accounts (`auth_users`).
+- **user-service** — the same six accounts with `active = true`, ids `1..6`.
+- **product-service** — ten approved products covering every category (including a
+  low-stock and an out-of-stock item for the stock sorter) plus two sample notifications.
+- **order-service** — four sample orders (CONFIRMED / PENDING / REJECTED) and two cart items,
+  referencing the seeded demo user and product ids (`1..6` / `1..10`).
+- No fake message logs are seeded — the audit log always reflects real runtime activity.
+
+### Creating a clean demo environment safely
+
+1. Stop the services.
+2. Remove the service databases (or the Postgres volume for a fully clean run).
+3. Start with `SPRING_PROFILES_ACTIVE=demo docker compose up -d`.
+4. Flyway recreates the schema and the demo data is applied once.
+
+For a locally run backend (Gradle), start each service with:
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=demo'
+```
+
+### Troubleshooting
+
+- **Flyway migration failure on startup**: the output shows which migration and file failed.
+  Because migrations are versioned, fix forward by adding a new migration instead of editing
+  an applied one.
+- **Demo data not appearing**: confirm the service logs show `Migrating schema ... to version
+  900` and that `SPRING_PROFILES_ACTIVE=demo` was set before the first startup.
+- **Duplicate-key errors**: the demo inserts use `ON CONFLICT ... DO NOTHING`; if you still
+  see a conflict a previously applied version exists — inspect `flyway_schema_history` in the
+  service database.
+- **Before production**: remove the `demo` profile, verify `flyway.locations` is only
+  `classpath:db/migration` (the default), and rotate database credentials / secrets.
+
+---
+
 ## Testing
 
 Each service runs its own tests and produces a JaCoCo report:

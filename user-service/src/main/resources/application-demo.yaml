@@ -1,0 +1,6 @@
+# Demo profile: adds the demo data location to Flyway so a fresh installation is
+# pre-populated with safe test/demo records. Production / default profile does NOT
+# include classpath:db/demo, so no test data is ever inserted there.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo
