@@ -81,6 +81,36 @@ class ProductServiceTest {
     }
 
     @Test
+    void create_persistsImageUrlWhenProvided() {
+        stubSave();
+        Product request = Product.builder().name("Phone").price(new BigDecimal("10.00"))
+                .availableQuantity(2).imageUrl("/v1/products/images/abc.png").build();
+
+        Product saved = productService.create(request, "maintainer@example.com");
+
+        assertThat(saved.getImageUrl()).isEqualTo("/v1/products/images/abc.png");
+    }
+
+    @Test
+    void updateImage_setsUrl() {
+        Product p = product(1L, ProductStatus.APPROVED);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        stubSave();
+
+        Product result = productService.updateImage(1L, "/v1/products/images/new.png");
+
+        assertThat(result.getImageUrl()).isEqualTo("/v1/products/images/new.png");
+        verify(productSearchService).index(result);
+    }
+
+    @Test
+    void updateImage_missingProductReturnsNull() {
+        when(productRepository.findById(9L)).thenReturn(Optional.empty());
+
+        assertThat(productService.updateImage(9L, "/v1/products/images/new.png")).isNull();
+    }
+
+    @Test
     void create_defaultsCategoryToOther() {
         stubSave();
         Product request = Product.builder().name("Phone").price(new BigDecimal("10.00"))

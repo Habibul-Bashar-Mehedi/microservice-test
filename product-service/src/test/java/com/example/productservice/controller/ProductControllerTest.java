@@ -1,16 +1,19 @@
 package com.example.productservice.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.productservice.entity.Product;
 import com.example.productservice.entity.ProductNotification;
 import com.example.productservice.entity.ProductStatus;
+import com.example.productservice.service.ProductImageStorageService;
 import com.example.productservice.service.ProductNotificationService;
 import com.example.productservice.service.ProductSearchService;
 import com.example.productservice.service.ProductService;
@@ -24,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -39,12 +43,15 @@ class ProductControllerTest {
     private ProductNotificationService productNotificationService;
     @Mock
     private ProductSearchService productSearchService;
+    @Mock
+    private ProductImageStorageService productImageStorageService;
 
     private ProductController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new ProductController(productService, productNotificationService, productSearchService);
+        controller = new ProductController(productService, productNotificationService, productSearchService,
+                productImageStorageService);
         RequestContextHolder.setRequestAttributes(
                 new ServletRequestAttributes(new MockHttpServletRequest()));
     }
@@ -72,6 +79,87 @@ class ProductControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void createWithImageV1_storesImageAndCreatesProduct() {
+        MockMultipartFile image = new MockMultipartFile("image", "p.png", "image/png", "bytes".getBytes());
+        Product saved = product(1L);
+        saved.setImageUrl("/v1/products/images/abc.png");
+        when(productImageStorageService.store(image)).thenReturn("/v1/products/images/abc.png");
+        when(productService.create(any(Product.class), eq("mt@x.com"))).thenReturn(saved);
+
+        var response = controller.createWithImageV1(product(null), image, auth("mt@x.com", "MAINTAINER"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getImageUrl()).isEqualTo("/v1/products/images/abc.png");
+    }
+
+    @Test
+    void createWithImageV1_deletesFileWhenCreationFails() {
+        MockMultipartFile image = new MockMultipartFile("image", "p.png", "image/png", "bytes".getBytes());
+        when(productImageStorageService.store(image)).thenReturn("/v1/products/images/abc.png");
+        when(productService.create(any(Product.class), eq("mt@x.com")))
+                .thenThrow(new RuntimeException("duplicate"));
+
+        assertThatThrownBy(() -> controller.createWithImageV1(product(null), image, auth("mt@x.com", "MAINTAINER")))
+                .isInstanceOf(RuntimeException.class);
+        verify(productImageStorageService).delete("/v1/products/images/abc.png");
+    }
+
+    @Test
+    void updateImageV1_ownerReplacesImageAndDeletesPrevious() {
+        Product existing = product(1L);
+        existing.setCreatedBy("mt@x.com");
+        existing.setImageUrl("/v1/products/images/old.png");
+        when(productService.findById(1L)).thenReturn(existing);
+        MockMultipartFile image = new MockMultipartFile("image", "p.png", "image/png", "bytes".getBytes());
+        when(productImageStorageService.store(image)).thenReturn("/v1/products/images/new.png");
+        Product updated = product(1L);
+        updated.setImageUrl("/v1/products/images/new.png");
+        when(productService.updateImage(1L, "/v1/products/images/new.png")).thenReturn(updated);
+
+        var response = controller.updateImageV1(1L, image, auth("mt@x.com", "MAINTAINER"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(productImageStorageService).delete("/v1/products/images/old.png");
+    }
+
+    @Test
+    void updateImageV1_forbiddenForNonOwner() {
+        Product existing = product(1L);
+        existing.setCreatedBy("owner@x.com");
+        when(productService.findById(1L)).thenReturn(existing);
+        MockMultipartFile image = new MockMultipartFile("image", "p.png", "image/png", "bytes".getBytes());
+
+        assertThatThrownBy(() -> controller.updateImageV1(1L, image, auth("other@x.com", "MAINTAINER")))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        verify(productImageStorageService, never()).store(any());
+    }
+
+    @Test
+    void updateImageV1_missingProductReturns404() {
+        when(productService.findById(9L)).thenReturn(null);
+        MockMultipartFile image = new MockMultipartFile("image", "p.png", "image/png", "bytes".getBytes());
+
+        assertThat(controller.updateImageV1(9L, image, auth("mt@x.com", "MAINTAINER")).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteImageV1_adminClearsAndDeletesFile() {
+        Product existing = product(1L);
+        existing.setCreatedBy("owner@x.com");
+        existing.setImageUrl("/v1/products/images/old.png");
+        when(productService.findById(1L)).thenReturn(existing);
+        Product cleared = product(1L);
+        when(productService.updateImage(1L, null)).thenReturn(cleared);
+
+        var response = controller.deleteImageV1(1L, auth("admin@x.com", "ADMIN"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(productImageStorageService).delete("/v1/products/images/old.png");
     }
 
     @Test

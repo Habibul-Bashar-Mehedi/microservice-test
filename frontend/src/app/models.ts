@@ -11,6 +11,7 @@ export interface Product {
     name: string;
     price: number;
     availableQuantity: number;
+    imageUrl?: string | null;
     category?: string;
     status?: string;
     rejectionReason?: string | null;

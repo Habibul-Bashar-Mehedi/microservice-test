@@ -13,6 +13,7 @@ import { Order, Product } from '../models';
 type ApiVersion = 'v1' | 'v2' | 'v3';
 
 const API_VERSION_KEY = 'order-api-version';
+const PLACEHOLDER_IMAGE = '/product-placeholder.svg';
 
 @Component({
     selector: 'app-dashboard',
@@ -42,6 +43,17 @@ export class DashboardComponent implements OnInit {
 
     get role() {
         return this.user()?.role ?? 'USER';
+    }
+
+    imageFor(product: Product): string {
+        return product.imageUrl ? API.productOrigin + product.imageUrl : PLACEHOLDER_IMAGE;
+    }
+
+    onImageError(event: Event) {
+        const img = event.target as HTMLImageElement;
+        if (!img.src.endsWith(PLACEHOLDER_IMAGE)) {
+            img.src = PLACEHOLDER_IMAGE;
+        }
     }
 
     ngOnInit() {

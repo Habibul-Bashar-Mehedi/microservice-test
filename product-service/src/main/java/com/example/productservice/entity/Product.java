@@ -54,6 +54,9 @@ public class Product {
     @Column(name = "category", nullable = false)
     private Category category = Category.OTHER;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 

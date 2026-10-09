@@ -22,7 +22,7 @@
         </div>
     }
 
-    @if ((feature === 'add' || feature === 'list') && role === 'MAINTAINER') {
+    @if ((feature === 'add' || feature === 'list') && (role === 'MAINTAINER' || role === 'ADMIN')) {
         <section class="panel section-gap">
             <div class="panel-header">
                 <h2 class="panel-title"><app-icon name="plus" [size]="17" /> Create Product</h2>
@@ -49,6 +49,32 @@
                                     <option [value]="c">{{ c }}</option>
                                 }
                             </select>
+                        </div>
+                        <div class="field field-full">
+                            <label for="new-image">Product Image</label>
+                            <div class="image-field">
+                                <div class="image-preview">
+                                    @if (imagePreview) {
+                                        <img [src]="imagePreview" alt="Selected product image preview">
+                                    } @else {
+                                        <img src="/product-placeholder.svg" alt="No image selected">
+                                    }
+                                </div>
+                                <div class="image-controls">
+                                    <input id="new-image" class="input" type="file" accept="image/png,image/jpeg,image/gif"
+                                           (change)="onImageSelected($event)">
+                                    @if (imagePreview) {
+                                        <button type="button" class="btn btn-secondary btn-sm" (click)="removeImage()">
+                                            <app-icon name="close" [size]="15" />
+                                            Remove image
+                                        </button>
+                                    }
+                                    <span class="form-note">PNG, JPEG or GIF up to {{ maxImageLabel }}. Optional.</span>
+                                    @if (imageError()) {
+                                        <span class="field-error">{{ imageError() }}</span>
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="form-actions">
@@ -95,6 +121,7 @@
                     <thead>
                     <tr>
                         <th class="col-id">ID</th>
+                        <th class="col-image">Image</th>
                         <th>Name</th>
                         <th class="num">Price</th>
                         <th class="num">Available</th>
@@ -108,6 +135,17 @@
                         @for (p of filteredList(); track p.id) {
                             <tr>
                                 <td class="col-id">{{ p.id }}</td>
+                                <td class="col-image">
+                                    <img class="product-photo" [src]="imageFor(p)" (error)="onImageError($event)"
+                                         [alt]="'Product image for ' + p.name" width="48" height="48" loading="lazy">
+                                    @if (isMine(p)) {
+                                        <label class="image-replace" title="Replace image">
+                                            <app-icon name="edit" [size]="13" />
+                                            <input type="file" accept="image/png,image/jpeg,image/gif"
+                                                   (change)="updateImage(p, $event)" aria-label="Replace product image">
+                                        </label>
+                                    }
+                                </td>
                                 <td class="cell-strong">
                                     @if (edits[p.id]) {
                                         <input class="input" type="text" [name]="'edit-name-' + p.id" [(ngModel)]="edits[p.id].name">
@@ -186,6 +224,7 @@
                     <thead>
                     <tr>
                         <th class="col-id">ID</th>
+                        <th class="col-image">Image</th>
                         <th>Name</th>
                         <th class="num">Price</th>
                         <th class="num">Available</th>
@@ -203,6 +242,10 @@
                         @for (p of filteredPending(); track p.id) {
                             <tr>
                                 <td class="col-id">{{ p.id }}</td>
+                                <td class="col-image">
+                                    <img class="product-photo" [src]="imageFor(p)" (error)="onImageError($event)"
+                                         [alt]="'Product image for ' + p.name" width="48" height="48" loading="lazy">
+                                </td>
                                 <td class="cell-strong">{{ p.name }}</td>
                                 <td class="num">{{ p.price }}</td>
                                 <td class="num">{{ p.availableQuantity }}</td>
@@ -248,6 +291,7 @@
                     <thead>
                     <tr>
                         <th class="col-id">ID</th>
+                        <th class="col-image">Image</th>
                         <th>Name</th>
                         <th class="num">Price</th>
                         <th class="num">Available</th>
@@ -262,6 +306,15 @@
                         @for (p of filteredStock(); track p.id) {
                             <tr>
                                 <td class="col-id">{{ p.id }}</td>
+                                <td class="col-image">
+                                    <img class="product-photo" [src]="imageFor(p)" (error)="onImageError($event)"
+                                         [alt]="'Product image for ' + p.name" width="48" height="48" loading="lazy">
+                                    <label class="image-replace" title="Replace image">
+                                        <app-icon name="edit" [size]="13" />
+                                        <input type="file" accept="image/png,image/jpeg,image/gif"
+                                               (change)="updateImage(p, $event)" aria-label="Replace product image">
+                                    </label>
+                                </td>
                                 <td class="cell-strong">{{ p.name }}</td>
                                 <td class="num">{{ p.price }}</td>
                                 <td class="num">

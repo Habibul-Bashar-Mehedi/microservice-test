@@ -31,12 +31,16 @@ public class ProductDocument {
     @Field(type = FieldType.Integer)
     private Integer availableQuantity;
 
+    @Field(type = FieldType.Keyword)
+    private String imageUrl;
+
     public static ProductDocument from(Product product) {
         return ProductDocument.builder()
                 .id(product.getId())
                 .name(product.getName())
                 .price(product.getPrice())
                 .availableQuantity(product.getAvailableQuantity())
+                .imageUrl(product.getImageUrl())
                 .build();
     }
 }

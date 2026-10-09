@@ -37,8 +37,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/products/images/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/products").hasAnyRole("MAINTAINER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/products/{id}").hasRole("MAINTAINER")
+                        .requestMatchers(HttpMethod.PUT, "/v1/products/{id}/image").hasAnyRole("MAINTAINER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/products/{id}/image").hasAnyRole("MAINTAINER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/v1/products/mine").hasRole("MAINTAINER")
                         .requestMatchers(HttpMethod.GET, "/v1/products/pending/manager").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/v1/products/{id}/manager/review").hasRole("MANAGER")

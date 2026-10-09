@@ -4,6 +4,7 @@ import com.example.productservice.entity.Product;
 import com.example.productservice.entity.ProductNotification;
 import com.example.productservice.entity.ProductStatus;
 import com.example.productservice.service.InsufficientStockException;
+import com.example.productservice.service.ProductImageStorageService;
 import com.example.productservice.service.ProductNotificationService;
 import com.example.productservice.service.ProductSearchService;
 import com.example.productservice.service.ProductService;
@@ -17,10 +18,12 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +31,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
@@ -39,15 +45,89 @@ public class ProductController {
     private final ProductService productService;
     private final ProductNotificationService productNotificationService;
     private final ProductSearchService productSearchService;
+    private final ProductImageStorageService productImageStorageService;
 
-    @PostMapping("/v1/products")
+    @PostMapping(value = "/v1/products", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> createV1(@Valid @RequestBody Product product, Authentication authentication) {
-        Product saved = productService.create(product, authentication.getName());
+        return createdResponse(productService.create(product, authentication.getName()));
+    }
+
+    @PostMapping(value = "/v1/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Product> createWithImageV1(
+            @Valid @RequestPart("product") Product product,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication) {
+        String imageUrl = productImageStorageService.store(image);
+        product.setImageUrl(imageUrl);
+        try {
+            return createdResponse(productService.create(product, authentication.getName()));
+        } catch (RuntimeException e) {
+            // Never leave an orphaned file behind when product creation fails.
+            productImageStorageService.delete(imageUrl);
+            throw e;
+        }
+    }
+
+    private ResponseEntity<Product> createdResponse(Product saved) {
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(saved.getId())
                 .toUri();
         return ResponseEntity.created(location).body(saved);
+    }
+
+    @PutMapping(value = "/v1/products/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Product> updateImageV1(
+            @PathVariable Long id,
+            @RequestPart("image") MultipartFile image,
+            Authentication authentication) {
+        Product existing = productService.findById(id);
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean admin = "ADMIN".equals(currentRole(authentication));
+        if (!admin && !authentication.getName().equalsIgnoreCase(existing.getCreatedBy())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "You can only change images for your own products");
+        }
+
+        String previousUrl = existing.getImageUrl();
+        String newUrl = productImageStorageService.store(image);
+        Product updated;
+        try {
+            updated = productService.updateImage(id, newUrl);
+        } catch (RuntimeException e) {
+            productImageStorageService.delete(newUrl);
+            throw e;
+        }
+        if (updated == null) {
+            productImageStorageService.delete(newUrl);
+            return ResponseEntity.notFound().build();
+        }
+        if (previousUrl != null && !previousUrl.equals(newUrl)) {
+            productImageStorageService.delete(previousUrl);
+        }
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping(value = "/v1/products/{id}/image")
+    public ResponseEntity<Product> deleteImageV1(@PathVariable Long id, Authentication authentication) {
+        Product existing = productService.findById(id);
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean admin = "ADMIN".equals(currentRole(authentication));
+        if (!admin && !authentication.getName().equalsIgnoreCase(existing.getCreatedBy())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "You can only change images for your own products");
+        }
+
+        String previousUrl = existing.getImageUrl();
+        Product updated = productService.updateImage(id, null);
+        productImageStorageService.delete(previousUrl);
+        return updated == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(updated);
     }
 
     @GetMapping("/v1/products")
@@ -137,6 +217,7 @@ public class ProductController {
                         .name(doc.getName())
                         .price(doc.getPrice())
                         .availableQuantity(doc.getAvailableQuantity())
+                        .imageUrl(doc.getImageUrl())
                         .build())
                 .toList();
     }

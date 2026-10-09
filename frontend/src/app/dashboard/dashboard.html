@@ -2,7 +2,7 @@
     <header class="page-header">
         <div class="page-header-text">
             <span class="eyebrow">Storefront</span>
-            <h1 class="page-title">Product Dashboard</h1>
+            <h1 class="page-title">Product Lists</h1>
             <p class="page-sub">Browse the catalog, choose a quantity and place an order or add it to your cart.</p>
         </div>
         <div class="page-actions">
@@ -56,8 +56,15 @@
         <div class="product-grid">
             @for (p of products(); track p.id) {
                 <article class="product-card">
+                    <div class="product-media">
+                        <img
+                            [src]="imageFor(p)"
+                            (error)="onImageError($event)"
+                            [alt]="'Product image for ' + p.name"
+                            loading="lazy"
+                        >
+                    </div>
                     <div class="product-card-head">
-                        <span class="product-thumb"><app-icon name="products" [size]="20" /></span>
                         <span class="badge badge-neutral badge-plain">{{ p.category ?? 'OTHER' }}</span>
                     </div>
                     <h2 class="product-name">{{ p.name }}</h2>

@@ -17,6 +17,11 @@ spring:
   application:
     name: product-service
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   cache:
     type: jcache
     jcache:
@@ -82,6 +87,12 @@ jwt:
 
 log-service:
   base-url: http://log-service
+
+# Product image storage: files live on disk, only a relative URL is stored in the database.
+product:
+  image:
+    storage-dir: ${PRODUCT_IMAGE_STORAGE_DIR:./data/product-images}
+    max-size-bytes: 5242880
 
 # Async (Kafka) broker is discovered from Consul by service name.
 # The binder `brokers` value below is only a fallback when Consul is unavailable.

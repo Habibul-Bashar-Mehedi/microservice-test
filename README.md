@@ -140,143 +140,129 @@ PRODUCT_SPECIALIST, SALESMAN).
 
 ## Getting Started
 
-### Prerequisites
+### Option A — Run the whole system with Docker (recommended)
 
-- Java 25
-- Node.js + npm (for the frontend)
-- Docker (for the provided infrastructure containers)
-- A running **PostgreSQL** (`:5432`, user `lemon`/`lemon`) with the service databases
-- A running **Elasticsearch** (`:9200`) — required by `product-service` and `log-service`
-
-> `docker-compose.yml` provisions only **Kafka**, **RabbitMQ**, and **Consul**.
-> PostgreSQL and Elasticsearch must be provided separately.
-
-### 1. Start infrastructure
+`docker-compose.yml` defines the complete stack: PostgreSQL, Elasticsearch, Kafka,
+RabbitMQ, Consul, the six Spring Boot services, and the Angular frontend.
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-This starts Kafka (`:9092`), RabbitMQ (`:5672`, management UI `:15672`), and
-Consul (`:8500`).
+| What | URL |
+|---|---|
+| Frontend (Angular SPA) | http://localhost:4200 |
+| Auth service | http://localhost:8080 |
+| User service | http://localhost:8081 |
+| Product service | http://localhost:8082 |
+| Order service | http://localhost:8083 |
+| Log service | http://localhost:8084 |
+| Chatbot service | http://localhost:8085 |
+| Swagger UI (per service) | `http://localhost:<port>/swagger-ui.html` |
+| Consul UI | http://localhost:8500 |
 
-### 2. Configure secrets (chatbot)
+On first start each service runs its **Flyway** migrations, which create the schema **and**
+seed the bundled application data (see “Seeded application data” below). State is kept in
+named volumes (`postgres-data`, `elasticsearch-data`, `product-images`).
 
-The chatbot service loads an optional, git-ignored `local-secrets.yaml` for the LLM API
-key (`chatbot-service/src/main/resources/local-secrets.yaml`) or reads `OPENCODE_API_KEY`
-from the environment. Do not commit real keys.
-
-### 3. Run a backend service
-
-Each service is an independent Gradle project with its own wrapper:
+Stop / reset:
 
 ```bash
-cd auth-service
-./gradlew bootRun
+docker compose down       # stop, keep data
+docker compose down -v    # stop and wipe all data (fresh reseed next start)
 ```
 
-Repeat for `user-service`, `product-service`, `order-service`, `log-service`, and
-`chatbot-service`. Services self-register with Consul when they start.
+### Option B — Run backend services locally (Gradle)
 
-### 4. Run the frontend
+Prerequisites: **Java 25**, **Node.js + npm**, **Docker** (for infrastructure), and a
+**PostgreSQL** on `localhost:5432` (user/password `lemon`/`lemon`) with the service
+databases. `docker-compose.yml` publishes its bundled Postgres on host port **5433**, so if
+you use it for local runs, point the services at `localhost:5433` (see below).
 
-```bash
-cd frontend
-npm install
-npm start        # ng serve
-```
+1. Start infrastructure:
 
-The SPA talks directly to the service ports (see `frontend/src/app/api-config.ts`).
+   ```bash
+   docker compose up -d postgres elasticsearch kafka consul rabbitmq
+   ```
+
+2. Run a service (each is an independent Gradle project with its own wrapper):
+
+   ```bash
+   cd auth-service
+   ./gradlew bootRun
+   ```
+
+   Repeat for `user-service`, `product-service`, `order-service`, `log-service` and
+   `chatbot-service`. To use the Compose Postgres (host port `5433`):
+
+   ```bash
+   SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/auth-service ./gradlew bootRun
+   ```
+
+3. Run the frontend:
+
+   ```bash
+   cd frontend
+   npm install
+   npm start        # ng serve → http://localhost:4200
+   ```
+
+Services self-register with Consul on startup, and the frontend calls each service port
+directly (see `frontend/src/app/api-config.ts`).
+
+### Configure secrets (chatbot)
+
+The chatbot service reads an optional, git-ignored `chatbot-service/src/main/resources/local-secrets.yaml`
+for the LLM API key, or the `OPENCODE_API_KEY` environment variable. Never commit real keys.
 
 ---
 
-## Demo Environment & Automatic Test Data
+## Seeded application data (Flyway)
 
-A fresh installation can be pre-populated with safe, representative test data so that
-products, orders, users and roles are available **immediately after startup** — no manual
-SQL is required.
+Each service manages both its **schema** and a snapshot of the application's **data** with
+Flyway migrations under `src/main/resources/db/migration`. Cloning the repository and starting
+the services is therefore enough to get a fully populated, testable system — no manual SQL.
 
-### How database initialization works
+| Service | Schema migrations | Seed migration | Seeded tables |
+|---|---|---|---|
+| auth-service | `V1__init.sql` | `V2__seed_data.sql` | `auth_users` |
+| user-service | `V1__init.sql` | `V2__seed_data.sql` | `users` |
+| product-service | `V1`–`V5` | `V6__seed_data.sql` | `products`, `product_notifications`, `stock_updates` |
+| order-service | `V1`–`V2` | `V3__seed_data.sql` | `orders`, `cart_items` |
+| log-service | `V1__init.sql` | `V2__seed_data.sql` | `message_logs` |
 
-1. **Schema** is managed by **Flyway** versioned migrations in each service
-   (`src/main/resources/db/migration/*.sql`). They always run.
-2. **Test/demo data** lives in a separate location: `src/main/resources/db/demo/*.sql`
-   (auth, user, product, order services). Flyway only scans this location when the
-   **`demo` Spring profile** is active (`application-demo.yaml` sets
-   `spring.flyway.locations: classpath:db/migration,classpath:db/demo`).
+Notes:
 
-Demo data is **never** inserted into production: the default profile and production
-deployments only use `db/migration`. Seeding is idempotent — Flyway records each migration
-once, and the SQL uses `ON CONFLICT ... DO NOTHING` as a second safeguard, so restarts and
-repeated startup never duplicate records.
-
-### Enabling demo data on a fresh install
-
-Start the services with the `demo` profile active. With the provided Compose stack:
-
-```bash
-SPRING_PROFILES_ACTIVE=demo docker compose up -d
-```
-
-or set `SPRING_PROFILES_ACTIVE=demo` in your environment / `.env` for the compose project.
-Running without the `demo` profile (or with `prod`) produces an empty database (schema only).
+- **IDs and relationships are preserved.** Order `user_id` values reference user-service ids
+  and `product_id` values reference product-service ids; approval metadata and notification
+  links are kept as-is.
+- **Idempotent.** Every insert uses `INSERT ... ON CONFLICT DO NOTHING`, and identity sequences
+  are realigned afterwards. Migrations are safe to apply to an existing database and re-runs
+  never duplicate rows.
+- **Product images.** The images referenced by seeded products are bundled under
+  `product-service/src/main/resources/seed-product-images/` and copied into the image storage
+  directory by `SeedImageLoader` on startup, so pictures resolve on a fresh clone or volume.
+  Newly uploaded images live on disk (`product.image.storage-dir`, `/app/data/product-images`
+  in Docker) with their URL stored in the `products.image_url` column.
+- **Regenerating the snapshot.** `scripts/generate_seed_migrations.py` regenerates the
+  `V*__seed_data.sql` files from a running database.
+- **Production.** These seed migrations are intended for development/testing. For production,
+  remove the `V*__seed_data.sql` files and start from the schema migrations only.
 
 ### Test accounts (Google Sign-In)
 
-Authentication is **Google Sign-In only**. These demo emails are pre-registered with the
-correct role and `active = true` in both `auth-service` (`auth_users`) and `user-service`
-(`users`):
+Authentication is **Google Sign-In only**; there are no passwords. The seeded `auth_users` /
+`users` rows are a snapshot of the original installation, so they use real Google addresses.
+To test locally:
 
-| Role | Email | Note |
-|---|---|---|
-| Admin | `admin@example.com` | Full administration |
-| Maintainer | `maintainer@example.com` | Creates / resubmits products |
-| Manager | `manager@example.com` | Manager-stage approval |
-| Product Specialist | `specialist@example.com` | Specialist-stage approval |
-| Salesman | `salesman@example.com` | Salesman-stage approval |
-| User | `user@example.com` | Storefront / cart / orders |
+1. Sign in with **your own Google account** — the first login creates a `USER` profile.
+2. To unlock staff screens, either:
+   - add your email to `oauth2.admin-emails` in `auth-service` / `product-service`
+     `application.yaml` (grants `ROLE_ADMIN`), or
+   - update your role in `auth_users` (`UPDATE auth_users SET role='ADMIN' WHERE email='you@example.com';`)
+     and `users` and sign in again.
 
-**Limitation:** Google only lets you sign in with an account you control, so to exercise a
-specific role you need a Google account whose email matches the row above. For quick local
-testing, log in once with any Google account (grabbing the `USER` role by default). To try
-the staff pages, either sign in with a matching email, or use Consul/API tooling to change a
-user's role. The frontend's login page shows the resolved role on the account menu.
-
-### What demo data is seeded
-
-- **auth-service** — six role accounts (`auth_users`).
-- **user-service** — the same six accounts with `active = true`, ids `1..6`.
-- **product-service** — ten approved products covering every category (including a
-  low-stock and an out-of-stock item for the stock sorter) plus two sample notifications.
-- **order-service** — four sample orders (CONFIRMED / PENDING / REJECTED) and two cart items,
-  referencing the seeded demo user and product ids (`1..6` / `1..10`).
-- No fake message logs are seeded — the audit log always reflects real runtime activity.
-
-### Creating a clean demo environment safely
-
-1. Stop the services.
-2. Remove the service databases (or the Postgres volume for a fully clean run).
-3. Start with `SPRING_PROFILES_ACTIVE=demo docker compose up -d`.
-4. Flyway recreates the schema and the demo data is applied once.
-
-For a locally run backend (Gradle), start each service with:
-
-```bash
-./gradlew bootRun --args='--spring.profiles.active=demo'
-```
-
-### Troubleshooting
-
-- **Flyway migration failure on startup**: the output shows which migration and file failed.
-  Because migrations are versioned, fix forward by adding a new migration instead of editing
-  an applied one.
-- **Demo data not appearing**: confirm the service logs show `Migrating schema ... to version
-  900` and that `SPRING_PROFILES_ACTIVE=demo` was set before the first startup.
-- **Duplicate-key errors**: the demo inserts use `ON CONFLICT ... DO NOTHING`; if you still
-  see a conflict a previously applied version exists — inspect `flyway_schema_history` in the
-  service database.
-- **Before production**: remove the `demo` profile, verify `flyway.locations` is only
-  `classpath:db/migration` (the default), and rotate database credentials / secrets.
+The frontend’s account menu shows the resolved role.
 
 ---
 
@@ -312,7 +298,9 @@ The aggregated HTML report is written to
 ├── chatbot-service/      # Role-scoped AI assistant
 ├── frontend/             # Angular SPA
 ├── consul/               # Consul agent config
-├── docker-compose.yml    # Kafka, RabbitMQ, Consul
+├── docker/               # Dockerfiles + Postgres init (databases)
+├── scripts/              # Seed migration generator, image fetch helper
+├── docker-compose.yml    # Full stack: infra + all services + frontend
 ├── build.gradle          # Root JaCoCo aggregation
 ├── jacoco-aggregate.sh   # Run all tests + aggregate coverage
 └── *.md                  # Architecture / flow documentation

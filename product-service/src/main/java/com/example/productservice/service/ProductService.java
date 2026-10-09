@@ -353,6 +353,21 @@ public class ProductService {
 
     @Transactional
     @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
+    public Product updateImage(Long id, String imageUrl) {
+        Product product = productRepository.findById(id).orElse(null);
+
+        if (product == null) {
+            return null;
+        }
+
+        product.setImageUrl(imageUrl);
+        Product saved = productRepository.save(product);
+        productSearchService.index(saved);
+        return saved;
+    }
+
+    @Transactional
+    @CacheEvict(value = {"products", "productById", "productsApproved"}, allEntries = true)
     public Product updateName(Long id, String name) {
         Product product = productRepository.findById(id).orElse(null);
 

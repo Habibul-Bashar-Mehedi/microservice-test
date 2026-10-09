@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
@@ -13,13 +13,17 @@ import { Product } from '../models';
 
 type ProductFeature = 'add' | 'list' | 'pending' | 'stock';
 
+const PLACEHOLDER_IMAGE = '/product-placeholder.svg';
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 @Component({
     selector: 'app-product',
     imports: [FormsModule, IconComponent, StatusTonePipe, PrettyStatusPipe],
     templateUrl: './product.html',
     styleUrl: './product.css'
 })
-export class ProductComponent implements OnInit {
+export class ProductComponent implements OnInit, OnDestroy {
 
     private http = inject(HttpClient);
     private route = inject(ActivatedRoute);
@@ -43,6 +47,10 @@ export class ProductComponent implements OnInit {
 
     categories = ['OTHER', 'CHAL', 'DAL', 'ATA', 'MOYDA', 'CHINI', 'MOSHLA'];
     form = {name: '', price: null as number | null, availableQuantity: null as number | null, category: 'OTHER'};
+    imageFile: File | null = null;
+    imagePreview: string | null = null;
+    imageError = signal('');
+    maxImageLabel = '5 MB';
     amounts: Record<number, number> = {};
     prices: Record<number, number> = {};
     names: Record<number, string> = {};
@@ -167,21 +175,124 @@ export class ProductComponent implements OnInit {
         });
     }
 
+    imageFor(product: Product): string {
+        return product.imageUrl ? API.productOrigin + product.imageUrl : PLACEHOLDER_IMAGE;
+    }
+
+    onImageError(event: Event) {
+        const img = event.target as HTMLImageElement;
+        if (!img.src.endsWith(PLACEHOLDER_IMAGE)) {
+            img.src = PLACEHOLDER_IMAGE;
+        }
+    }
+
+    onImageSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files && input.files.length > 0 ? input.files[0] : null;
+        if (!file) {
+            return;
+        }
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            this.setImageError('Only PNG, JPEG or GIF images are allowed.');
+            input.value = '';
+            return;
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+            this.setImageError('Image must be ' + this.maxImageLabel + ' or smaller.');
+            input.value = '';
+            return;
+        }
+        this.setPreview(null);
+        this.imageFile = file;
+        this.imagePreview = URL.createObjectURL(file);
+        this.imageError.set('');
+    }
+
+    removeImage() {
+        this.setPreview(null);
+        this.imageFile = null;
+        this.imageError.set('');
+    }
+
+    private setPreview(url: string | null) {
+        if (this.imagePreview) {
+            URL.revokeObjectURL(this.imagePreview);
+        }
+        this.imagePreview = url;
+    }
+
+    private setImageError(text: string) {
+        this.imageError.set(text);
+        this.message.set(text);
+        this.isError.set(true);
+    }
+
+    private buildFormData(includeImage: boolean): FormData {
+        const data = new FormData();
+        data.append('product', new Blob([JSON.stringify(this.form)], {type: 'application/json'}));
+        if (includeImage && this.imageFile) {
+            data.append('image', this.imageFile);
+        }
+        return data;
+    }
+
     async create() {
         if (!(await this.confirmDialog.ask('Are you sure you want to create this product?'))) {
             return;
         }
-        this.http.post<Product>(this.base + '/products', this.form).subscribe({
+        this.http.post<Product>(this.base + '/products', this.buildFormData(true)).subscribe({
             next: () => {
                 this.message.set('Product created and sent to the manager for review.');
                 this.isError.set(false);
                 this.form = {name: '', price: null, availableQuantity: null, category: 'OTHER'};
+                this.removeImage();
                 if (this.feature === 'list') {
                     this.load();
                 }
             },
             error: (err) => this.fail(err)
         });
+    }
+
+    async updateImage(product: Product, event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files && input.files.length > 0 ? input.files[0] : null;
+        if (!file) {
+            return;
+        }
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            input.value = '';
+            this.setImageError('Only PNG, JPEG or GIF images are allowed.');
+            return;
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+            input.value = '';
+            this.setImageError('Image must be ' + this.maxImageLabel + ' or smaller.');
+            return;
+        }
+        if (!(await this.confirmDialog.ask('Replace the image for product ' + product.id + '?'))) {
+            input.value = '';
+            return;
+        }
+
+        const data = new FormData();
+        data.append('image', file);
+        this.http.put<Product>(this.base + '/products/' + product.id + '/image', data).subscribe({
+            next: () => {
+                this.message.set('Image updated for product ' + product.id + '.');
+                this.isError.set(false);
+                input.value = '';
+                this.load();
+            },
+            error: (err) => {
+                input.value = '';
+                this.fail(err);
+            }
+        });
+    }
+
+    ngOnDestroy() {
+        this.setPreview(null);
     }
 
     startEdit(product: Product) {
