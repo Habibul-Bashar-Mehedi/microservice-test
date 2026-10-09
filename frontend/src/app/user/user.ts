@@ -5,14 +5,17 @@ import { ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
+import { AuthService } from '../auth.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
+import { StatusTonePipe } from '../ui/pipes';
 import { User } from '../models';
 
 type UserFeature = 'create' | 'list';
 
 @Component({
     selector: 'app-user',
-    imports: [FormsModule],
+    imports: [FormsModule, IconComponent, StatusTonePipe],
     templateUrl: './user.html',
     styleUrl: './user.css'
 })
@@ -21,8 +24,10 @@ export class UserComponent implements OnInit {
     private http = inject(HttpClient);
     private route = inject(ActivatedRoute);
     private title = inject(Title);
+    private auth = inject(AuthService);
     private confirmDialog = inject(ConfirmService);
 
+    role = this.auth.getUser()?.role ?? 'USER';
     feature: UserFeature = 'list';
 
     users = signal<User[]>([]);
@@ -65,6 +70,9 @@ export class UserComponent implements OnInit {
                 this.message.set('User created.');
                 this.isError.set(false);
                 this.form = {name: '', email: ''};
+                if (this.feature === 'list') {
+                    this.load();
+                }
             },
             error: (err) => this.fail(err)
         });

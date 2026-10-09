@@ -1,69 +1,174 @@
-<nav class="navbar">
-    <div class="navbar-brand">
-        <img src="logo.svg" alt="Microservice UI" class="navbar-logo">
-    </div>
+<div
+    class="app-root"
+    [class.app-shell]="isAuthenticated"
+    [class.is-collapsed]="sidebarCollapsed()"
+    [class.nav-open]="mobileNavOpen()"
+>
     @if (isAuthenticated) {
-        <div class="navbar-links">
-            @for (item of navItems; track item.link) {
-                <a [routerLink]="item.link" routerLinkActive="active">{{ item.label }}</a>
-            }
-            @if (canAccessApiDocs) {
-                <a routerLink="/services" routerLinkActive="active">API Docs</a>
-            }
-        </div>
-        <div class="navbar-right">
-            @if (showSearch) {
-                <div class="navbar-search">
-                    <input
-                        type="search"
-                        name="nav-search"
-                        [placeholder]="searchPlaceholder"
-                        autocomplete="off"
-                        [(ngModel)]="navSearch"
-                        (ngModelChange)="onSearchInput()"
-                        (keyup.enter)="submitSearch()"
-                        (focus)="onSearchInput()"
-                        (blur)="hideSuggestions()"
-                    >
-                    <button type="button" (click)="submitSearch()">Search</button>
-                    @if (showSuggestions() && suggestions().length > 0) {
-                        <ul class="navbar-suggestions">
-                            @for (s of suggestions(); track s.label + s.sub) {
-                                <li>
-                                    <button type="button" (mousedown)="selectSuggestion(s)">
-                                        {{ s.label }} <span class="suggestion-sub">{{ s.sub }}</span>
-                                    </button>
-                                </li>
-                            }
-                        </ul>
-                    }
-                </div>
-            }
-            <div class="navbar-account">
-                <button type="button" class="navbar-account-btn" (click)="toggleAccount()">
-                    {{ user?.name }} &#9662;
-                </button>
-                @if (accountOpen()) {
-                    <div class="navbar-account-menu">
-                        <p class="account-name">{{ user?.name }}</p>
-                        <p class="account-email">{{ user?.email }}</p>
-                        <p class="account-role">Role: {{ user?.role }}</p>
-                        <button type="button" class="navbar-logout" (click)="logout()">Logout</button>
+        <aside class="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-brand">
+                <span class="brand-mark">M</span>
+                <span class="brand-text">
+                    <strong>Microservice</strong>
+                    <span>Tests</span>
+                </span>
+            </div>
+
+            <nav class="sidebar-nav">
+                @for (group of navGroups; track group.label) {
+                    <div class="nav-group">
+                        <p class="nav-group-title">{{ group.label }}</p>
+                        @for (item of group.items; track item.link) {
+                            <a
+                                class="nav-item"
+                                [routerLink]="item.link"
+                                routerLinkActive="active"
+                                (click)="closeMobileNav()"
+                            >
+                                <app-icon [name]="item.icon" />
+                                <span>{{ item.label }}</span>
+                            </a>
+                        }
                     </div>
                 }
+
+                @if (canAccessApiDocs) {
+                    <div class="nav-group">
+                        <p class="nav-group-title">Platform</p>
+                        <a
+                            class="nav-item"
+                            routerLink="/services"
+                            routerLinkActive="active"
+                            (click)="closeMobileNav()"
+                        >
+                            <app-icon name="server" />
+                            <span>Services &amp; API</span>
+                        </a>
+                    </div>
+                }
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <span class="avatar">{{ initials }}</span>
+                    <span class="sidebar-user-info">
+                        <strong>{{ user?.name }}</strong>
+                        <span>{{ user?.role }}</span>
+                    </span>
+                </div>
             </div>
-        </div>
-    } @else {
-        <div class="navbar-links">
-            <a routerLink="/login">Login</a>
-        </div>
+        </aside>
+
+        <div class="mobile-scrim" (click)="closeMobileNav()"></div>
     }
-</nav>
+
+    <div class="main">
+        @if (isAuthenticated) {
+            <header class="topbar">
+                <button
+                    type="button"
+                    class="icon-btn menu-toggle"
+                    aria-label="Open navigation"
+                    (click)="toggleMobileNav()"
+                >
+                    <app-icon name="menu" />
+                </button>
+                <button
+                    type="button"
+                    class="icon-btn collapse-toggle"
+                    aria-label="Collapse sidebar"
+                    (click)="toggleSidebar()"
+                >
+                    <app-icon [name]="sidebarCollapsed() ? 'chevron-right' : 'chevron-left'" />
+                </button>
+
+                @if (showSearch) {
+                    <div class="topbar-search">
+                        <div class="search-field">
+                            <app-icon name="search" [size]="16" />
+                            <input
+                                type="search"
+                                name="nav-search"
+                                [placeholder]="searchPlaceholder"
+                                [attr.aria-label]="searchPlaceholder"
+                                autocomplete="off"
+                                [(ngModel)]="navSearch"
+                                (ngModelChange)="onSearchInput()"
+                                (keyup.enter)="submitSearch()"
+                                (keydown.escape)="clearSearch()"
+                                (focus)="onSearchInput()"
+                                (blur)="hideSuggestions()"
+                            >
+                            @if (navSearch) {
+                                <button
+                                    type="button"
+                                    class="search-clear"
+                                    aria-label="Clear search"
+                                    (mousedown)="clearSearch()"
+                                >
+                                    <app-icon name="close" [size]="14" />
+                                </button>
+                            }
+                        </div>
+                        @if (showSuggestions() && suggestions().length > 0) {
+                            <ul class="suggestions">
+                                @for (s of suggestions(); track s.label + s.sub) {
+                                    <li>
+                                        <button type="button" (mousedown)="selectSuggestion(s)">
+                                            <span>{{ s.label }}</span>
+                                            <span class="suggestion-sub">{{ s.sub }}</span>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+
+                <div class="topbar-actions">
+                    @if (isStaff) {
+                        <a class="icon-btn" routerLink="/notifications" aria-label="Notifications" title="Notifications">
+                            <app-icon name="bell" />
+                        </a>
+                    }
+                    <div class="account">
+                        <button
+                            type="button"
+                            class="account-btn"
+                            (click)="toggleAccount()"
+                            [attr.aria-expanded]="accountOpen()"
+                            aria-haspopup="menu"
+                        >
+                            <span class="avatar sm">{{ initials }}</span>
+                            <span class="account-name">{{ user?.name }}</span>
+                            <app-icon name="chevron-down" [size]="15" />
+                        </button>
+                        @if (accountOpen()) {
+                            <div class="account-menu" role="menu">
+                                <div class="account-menu-head">
+                                    <p class="account-name">{{ user?.name }}</p>
+                                    <p class="account-email">{{ user?.email }}</p>
+                                    <span class="badge badge-info badge-plain account-menu-role">{{ user?.role }}</span>
+                                </div>
+                                <button type="button" class="logout-btn" (click)="logout()">
+                                    <app-icon name="logout" [size]="16" />
+                                    Logout
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </header>
+        }
+
+        <main class="content" [class.content-auth]="!isAuthenticated">
+            <router-outlet />
+        </main>
+    </div>
+</div>
 
 <app-confirm-dialog />
 
 @if (isAuthenticated) {
     <app-chatbot />
 }
-
-<router-outlet />

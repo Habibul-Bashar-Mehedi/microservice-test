@@ -1,12 +1,13 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../auth.service';
 import { API } from '../api-config';
 import { CartService } from '../cart.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
 import { Order, Product } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
@@ -15,7 +16,7 @@ const API_VERSION_KEY = 'order-api-version';
 
 @Component({
     selector: 'app-dashboard',
-    imports: [FormsModule],
+    imports: [FormsModule, RouterLink, IconComponent],
     templateUrl: './dashboard.html',
     styleUrl: './dashboard.css'
 })
@@ -34,6 +35,7 @@ export class DashboardComponent implements OnInit {
     searchQuery = signal('');
     message = signal('');
     isError = signal(false);
+    loading = signal(false);
     placing = signal(false);
 
     private userProfileId: number | null = null;
@@ -73,13 +75,21 @@ export class DashboardComponent implements OnInit {
             this.loadProducts();
             return;
         }
+        this.loading.set(true);
         this.http.get<Product[]>(API.productV1 + '/products/search', {params: {q}}).subscribe({
-            next: (data) => this.products.set(data),
-            error: (err) => this.fail(err)
+            next: (data) => {
+                this.products.set(data);
+                this.loading.set(false);
+            },
+            error: (err) => {
+                this.loading.set(false);
+                this.fail(err);
+            }
         });
     }
 
     loadProducts() {
+        this.loading.set(true);
         this.http.get<Product[]>(API.productV1 + '/products').subscribe({
             next: (data) => {
                 this.products.set(data);
@@ -88,8 +98,12 @@ export class DashboardComponent implements OnInit {
                         this.quantities[p.id] = 1;
                     }
                 }
+                this.loading.set(false);
             },
-            error: (err) => this.fail(err)
+            error: (err) => {
+                this.loading.set(false);
+                this.fail(err);
+            }
         });
     }
 

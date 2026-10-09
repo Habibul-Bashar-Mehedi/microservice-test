@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { homePathFor } from '../auth.guard';
 import { GOOGLE_CLIENT_ID } from '../api-config';
+import { IconComponent } from '../ui/icon';
 
 declare global {
     interface Window {
@@ -28,7 +29,7 @@ declare global {
 
 @Component({
     selector: 'app-login',
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './login.html',
     styleUrl: './login.css'
 })

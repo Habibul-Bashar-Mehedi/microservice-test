@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ChatApiService } from './chat.service';
 import { AuthService } from '../auth.service';
+import { IconComponent } from '../ui/icon';
 import { ChatResponse } from '../models';
 
 interface ChatMessage {
@@ -12,7 +13,7 @@ interface ChatMessage {
 
 @Component({
     selector: 'app-chatbot',
-    imports: [FormsModule],
+    imports: [FormsModule, IconComponent],
     templateUrl: './chat.html',
     styleUrl: './chat.css'
 })
@@ -33,6 +34,29 @@ export class ChatbotComponent {
 
     get role(): string {
         return this.auth.getUser()?.role ?? 'USER';
+    }
+
+    get suggestions(): string[] {
+        switch (this.role) {
+            case 'ADMIN':
+                return ['List recent orders', 'Show message logs', 'List users'];
+            case 'MAINTAINER':
+                return ['Show my products', 'List recent orders', 'List notifications'];
+            case 'MANAGER':
+            case 'PRODUCT_SPECIALIST':
+            case 'SALESMAN':
+                return ['What needs my approval?', 'List pending products'];
+            default:
+                return ['Show me available products', "What's in my cart?", 'Where is my last order?'];
+        }
+    }
+
+    useSuggestion(text: string): void {
+        if (this.sending()) {
+            return;
+        }
+        this.draft = text;
+        this.send();
     }
 
     toggle(): void {

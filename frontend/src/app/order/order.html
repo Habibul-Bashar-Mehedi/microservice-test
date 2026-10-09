@@ -1,61 +1,145 @@
-@if (feature === 'create') {
-    <h1>Create Order</h1>
-} @else {
-    <h1>All Orders</h1>
-}
-
-<h3>API Version</h3>
-<label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v1'" (change)="setVersion('v1')"> v1 (sync)</label>
-<label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')"> v2 (async / Kafka)</label>
-<label><input type="radio" name="apiVersion" [checked]="apiVersion() === 'v3'" (change)="setVersion('v3')"> v3 (Feign)</label>
-
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-
-@if (feature === 'create') {
-    <form (ngSubmit)="create()">
-        <label>User ID <input type="number" name="userId" min="1" [(ngModel)]="form.userId" required></label>
-        <label>Product ID <input type="number" name="productId" min="1" [(ngModel)]="form.productId" required></label>
-        <label>Quantity <input type="number" name="quantity" min="1" [(ngModel)]="form.quantity" required></label>
-        <button type="submit" [disabled]="creating()">Create Order</button>
-    </form>
-}
-
-@if (feature === 'list') {
-    <button type="button" (click)="load()">Refresh</button>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>User Name</th>
-            <th>User Email</th>
-            <th>User ID</th>
-            <th>Product ID</th>
-            <th>Quantity</th>
-            <th>Status</th>
-            <th>Product Updated</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (o of filteredOrders(); track o.id) {
-                <tr>
-                    <td>{{ o.id }}</td>
-                    <td>{{ o.userName ?? o.userId }}</td>
-                    <td>{{ o.userEmail ?? '—' }}</td>
-                    <td>{{ o.userId }}</td>
-                    <td>{{ o.productId }}</td>
-                    <td>{{ o.quantity }}</td>
-                    <td>{{ o.status }}</td>
-                    <td>{{ o.productUpdated }}</td>
-                    <td>
-                        @if (canConfirm && o.status === 'PENDING') {
-                            <button type="button" (click)="confirm(o.id)">Confirm</button>
-                        } @else {
-                            <span>{{ o.status }}</span>
-                        }
-                    </td>
-                </tr>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Operations</span>
+            <h1 class="page-title">{{ feature === 'create' ? 'Create Order' : 'All Orders' }}</h1>
+            <p class="page-sub">
+                @if (feature === 'create') {
+                    Place an order on behalf of a customer using the selected API version.
+                } @else {
+                    Monitor orders and confirm pending ones. The list refreshes automatically.
+                }
+            </p>
+        </div>
+        <div class="page-actions">
+            @if (feature === 'list') {
+                <button type="button" class="btn btn-secondary" (click)="load()">
+                    <app-icon name="refresh" [size]="16" />
+                    Refresh
+                </button>
             }
-        </tbody>
-    </table>
-}
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <span class="field-inline"><app-icon name="server" [size]="15" /> API version</span>
+        <div class="segmented" role="radiogroup" aria-label="Order API version">
+            <label [class.active]="apiVersion() === 'v1'">
+                <input type="radio" name="apiVersion" [checked]="apiVersion() === 'v1'" (change)="setVersion('v1')">
+                v1 · Sync
+            </label>
+            <label [class.active]="apiVersion() === 'v2'">
+                <input type="radio" name="apiVersion" [checked]="apiVersion() === 'v2'" (change)="setVersion('v2')">
+                v2 · Kafka
+            </label>
+            <label [class.active]="apiVersion() === 'v3'">
+                <input type="radio" name="apiVersion" [checked]="apiVersion() === 'v3'" (change)="setVersion('v3')">
+                v3 · Feign
+            </label>
+        </div>
+        @if (feature === 'list') {
+            <span class="spacer"></span>
+            <span class="muted text-sm">{{ filteredOrders().length }} order(s)</span>
+        }
+    </div>
+
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (feature === 'create' || (feature === 'list' && canCreate)) {
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <h2 class="panel-title"><app-icon name="plus" [size]="17" /> Create Order</h2>
+            </div>
+            <div class="panel-body">
+                <form (ngSubmit)="create()">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="order-user">User ID <span class="req">*</span></label>
+                            <input id="order-user" class="input" type="number" name="userId" min="1" [(ngModel)]="form.userId" placeholder="e.g. 1" required>
+                        </div>
+                        <div class="field">
+                            <label for="order-product">Product ID <span class="req">*</span></label>
+                            <input id="order-product" class="input" type="number" name="productId" min="1" [(ngModel)]="form.productId" placeholder="e.g. 10" required>
+                        </div>
+                        <div class="field">
+                            <label for="order-qty">Quantity <span class="req">*</span></label>
+                            <input id="order-qty" class="input" type="number" name="quantity" min="1" [(ngModel)]="form.quantity" placeholder="1" required>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn" [disabled]="creating()">
+                            <app-icon name="send" [size]="16" />
+                            Create Order
+                        </button>
+                        <span class="form-note">Uses the selected API version above.</span>
+                    </div>
+                </form>
+            </div>
+        </section>
+    }
+
+    @if (feature === 'list') {
+        @if (filteredOrders().length === 0) {
+            <div class="empty">
+                <app-icon name="orders" [size]="34" />
+                <p class="empty-title">No orders</p>
+                <p class="empty-text">There are no orders matching the current view.</p>
+            </div>
+        } @else {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th class="col-id">Order</th>
+                        <th>Customer</th>
+                        <th>Email</th>
+                        <th class="num">User ID</th>
+                        <th class="num">Product ID</th>
+                        <th class="num">Quantity</th>
+                        <th>Status</th>
+                        <th>Product Updated</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (o of filteredOrders(); track o.id) {
+                            <tr>
+                                <td class="col-id">#{{ o.id }}</td>
+                                <td class="cell-strong">{{ o.userName ?? ('User ' + o.userId) }}</td>
+                                <td class="cell-muted">{{ o.userEmail ?? '—' }}</td>
+                                <td class="num">{{ o.userId }}</td>
+                                <td class="num">{{ o.productId }}</td>
+                                <td class="num">{{ o.quantity }}</td>
+                                <td><span [class]="o.status | statusTone">{{ o.status | prettyStatus }}</span></td>
+                                <td>
+                                    @if (o.productUpdated) {
+                                        <span class="badge badge-success badge-plain">Yes</span>
+                                    } @else {
+                                        <span class="muted">No</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        @if (canConfirm && o.status === 'PENDING') {
+                                            <button type="button" class="btn btn-sm" (click)="confirm(o.id)">
+                                                <app-icon name="check" [size]="15" />
+                                                Confirm
+                                            </button>
+                                        } @else {
+                                            <span class="muted text-sm">{{ o.status | prettyStatus }}</span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

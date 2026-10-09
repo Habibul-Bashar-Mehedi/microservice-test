@@ -6,11 +6,13 @@ import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
+import { StatusTonePipe } from '../ui/pipes';
 import { MessageLog } from '../models';
 
 @Component({
     selector: 'app-log',
-    imports: [FormsModule],
+    imports: [FormsModule, IconComponent, StatusTonePipe],
     templateUrl: './log.html',
     styleUrl: './log.css'
 })

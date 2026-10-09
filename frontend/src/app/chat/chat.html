@@ -1,33 +1,57 @@
 <div class="chatbot">
     @if (open()) {
-        <section class="chat-panel">
+        <section class="chat-panel" role="dialog" aria-label="AI assistant">
             <header class="chat-header">
-                <div>
-                    <strong>Assistant</strong>
-                    <span class="chat-role">{{ role }}</span>
+                <div class="chat-title">
+                    <span class="chat-avatar"><app-icon name="chat" [size]="16" /></span>
+                    <div class="chat-title-text">
+                        <strong>Assistant</strong>
+                        <span class="chat-role">{{ role }}</span>
+                    </div>
                 </div>
-                <button type="button" class="chat-close" (click)="toggle()" aria-label="Close">×</button>
+                <button type="button" class="icon-btn" (click)="toggle()" aria-label="Close chat">
+                    <app-icon name="close" [size]="18" />
+                </button>
             </header>
 
             <div class="chat-messages">
                 @for (m of messages(); track $index) {
                     <div class="chat-message" [class.from-user]="m.role === 'user'">
-                        <p>{{ m.text }}</p>
+                        <div class="bubble">
+                            <p>{{ m.text }}</p>
+                        </div>
                     </div>
                 }
                 @if (sending()) {
                     <div class="chat-message">
-                        <p class="chat-typing">…</p>
+                        <div class="bubble chat-typing">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                }
+                @if (!pending && !sending() && messages().length <= 1) {
+                    <div class="chat-chips">
+                        @for (s of suggestions; track s) {
+                            <button type="button" class="chat-chip" (click)="useSuggestion(s)">{{ s }}</button>
+                        }
                     </div>
                 }
             </div>
 
             @if (pending) {
                 <div class="chat-confirm">
-                    <p>{{ pending.summary || 'Are you sure you want to proceed?' }}</p>
+                    <p class="chat-confirm-text">
+                        <app-icon name="alert" [size]="15" />
+                        {{ pending.summary || 'Are you sure you want to proceed?' }}
+                    </p>
                     <div class="chat-confirm-actions">
-                        <button type="button" (click)="confirm()" [disabled]="sending()">Yes, confirm</button>
-                        <button type="button" class="secondary" (click)="cancel()" [disabled]="sending()">Cancel</button>
+                        <button type="button" class="btn btn-sm" (click)="confirm()" [disabled]="sending()">
+                            <app-icon name="check" [size]="15" />
+                            Yes, confirm
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="cancel()" [disabled]="sending()">
+                            Cancel
+                        </button>
                     </div>
                 </div>
             } @else {
@@ -37,16 +61,19 @@
                         name="chat"
                         autocomplete="off"
                         placeholder="Ask about products, approvals or orders..."
+                        aria-label="Message"
                         [(ngModel)]="draft"
                         [disabled]="sending()"
                     >
-                    <button type="submit" [disabled]="sending()">Send</button>
+                    <button type="submit" class="chat-send" [disabled]="sending() || !draft.trim()" aria-label="Send">
+                        <app-icon name="send" [size]="17" />
+                    </button>
                 </form>
             }
         </section>
     }
 
-    <button type="button" class="chat-launcher" (click)="toggle()">
-        {{ open() ? '×' : '💬' }}
+    <button type="button" class="chat-launcher" (click)="toggle()" [attr.aria-label]="open() ? 'Close assistant' : 'Open assistant'">
+        <app-icon [name]="open() ? 'close' : 'chat'" [size]="22" />
     </button>
 </div>

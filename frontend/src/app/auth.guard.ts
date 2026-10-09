@@ -40,7 +40,7 @@ export const roleGuard = (...roles: string[]): CanActivateFn => () => {
 export function homePathFor(role: string | undefined): string {
     switch (role) {
         case 'MAINTAINER':
-            return '/product/add';
+            return '/product/list';
         case 'MANAGER':
         case 'PRODUCT_SPECIALIST':
         case 'SALESMAN':

@@ -1,41 +1,91 @@
-<h1>Dashboard</h1>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Storefront</span>
+            <h1 class="page-title">Product Dashboard</h1>
+            <p class="page-sub">Browse the catalog, choose a quantity and place an order or add it to your cart.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="btn btn-secondary" (click)="loadProducts()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh
+            </button>
+            <a class="btn" routerLink="/cart">
+                <app-icon name="cart" [size]="16" />
+                Cart
+                @if (cart.items().length > 0) {
+                    <span class="cart-count">{{ cart.items().length }}</span>
+                }
+            </a>
+        </div>
+    </header>
 
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+    @if (searchQuery()) {
+        <p class="filter-note">Showing results for <strong>{{ searchQuery() }}</strong></p>
+    }
 
-<h2>Product List</h2>
-<button type="button" (click)="loadProducts()">Refresh</button>
-<table>
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Price</th>
-        <th>Available Quantity</th>
-        <th>Order Quantity</th>
-        <th>Action</th>
-    </tr>
-    </thead>
-    <tbody>
-        @for (p of products(); track p.id) {
-            <tr>
-                <td>{{ p.id }}</td>
-                <td>{{ p.name }}</td>
-                <td>{{ p.price }}</td>
-                <td>{{ p.availableQuantity }}</td>
-                <td>
-                    <input
-                        type="number"
-                        min="1"
-                        [max]="p.availableQuantity"
-                        name="quantity-{{ p.id }}"
-                        [(ngModel)]="quantities[p.id]"
-                    >
-                </td>
-                <td>
-                    <button type="button" (click)="addToCart(p)">Add to Cart</button>
-                    <button type="button" (click)="placeOrder(p)" [disabled]="placing()">Order Now</button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (loading()) {
+        <div class="product-grid">
+            @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+                <div class="product-card">
+                    <div class="skeleton skeleton-line" style="width: 40%"></div>
+                    <div class="skeleton skeleton-line" style="width: 80%; height: 18px"></div>
+                    <div class="skeleton skeleton-line" style="width: 55%"></div>
+                    <div class="skeleton skeleton-line" style="height: 36px; margin-top: 16px"></div>
+                </div>
+            }
+        </div>
+    } @else if (products().length === 0) {
+        <div class="empty">
+            <app-icon name="products" [size]="34" />
+            <p class="empty-title">No products found</p>
+            <p class="empty-text">There are no products to display right now. Try refreshing or adjusting your search.</p>
+            <button type="button" class="btn btn-secondary" (click)="loadProducts()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh
+            </button>
+        </div>
+    } @else {
+        <div class="product-grid">
+            @for (p of products(); track p.id) {
+                <article class="product-card">
+                    <div class="product-card-head">
+                        <span class="product-thumb"><app-icon name="products" [size]="20" /></span>
+                        <span class="badge badge-neutral badge-plain">{{ p.category ?? 'OTHER' }}</span>
+                    </div>
+                    <h2 class="product-name">{{ p.name }}</h2>
+                    <div class="product-meta">
+                        <span class="product-price">{{ p.price }}</span>
+                        <span class="product-stock" [class.is-low]="p.availableQuantity < 10">
+                            {{ p.availableQuantity }} in stock
+                        </span>
+                    </div>
+                    <div class="product-actions">
+                        <input
+                            class="input product-qty"
+                            type="number"
+                            min="1"
+                            [max]="p.availableQuantity"
+                            [name]="'quantity-' + p.id"
+                            [(ngModel)]="quantities[p.id]"
+                            aria-label="Quantity"
+                        >
+                        <button type="button" class="btn btn-secondary" (click)="addToCart(p)">
+                            Add to Cart
+                        </button>
+                        <button type="button" class="btn" (click)="placeOrder(p)" [disabled]="placing()">
+                            Order Now
+                        </button>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>

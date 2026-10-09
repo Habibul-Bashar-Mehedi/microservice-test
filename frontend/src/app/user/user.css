@@ -1,0 +1,7 @@
+.role-actions {
+    flex-wrap: nowrap;
+}
+
+.role-actions .select {
+    width: 170px;
+}
