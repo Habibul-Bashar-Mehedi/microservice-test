@@ -1,12 +1,14 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
 import { CartService, CartItem } from '../cart.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
 import { Order } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
@@ -15,8 +17,9 @@ const API_VERSION_KEY = 'order-api-version';
 
 @Component({
     selector: 'app-cart',
-    imports: [FormsModule],
-    templateUrl: './cart.html'
+    imports: [FormsModule, RouterLink, IconComponent],
+    templateUrl: './cart.html',
+    styleUrl: './cart.css'
 })
 export class CartComponent implements OnInit {
 

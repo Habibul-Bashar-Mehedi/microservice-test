@@ -1,27 +1,41 @@
-<h1>Services</h1>
-<p class="hub-sub">
-    Swagger UI, OpenAPI spec and health for every microservice.
-    <button type="button" (click)="refresh()">Refresh status</button>
-</p>
-
-<div class="service-grid">
-    @for (service of services(); track service.port) {
-        <div class="service-card">
-            <div class="service-head">
-                <h2>{{ service.name }}</h2>
-                <span
-                    class="badge"
-                    [class.up]="service.status === 'UP'"
-                    [class.down]="service.status === 'DOWN'"
-                >{{ service.status }}</span>
-            </div>
-            <p class="service-desc">{{ service.desc }}</p>
-            <p class="service-port">localhost:{{ service.port }}</p>
-            <div class="service-links">
-                <a [href]="swaggerUrl(service)" target="_blank" rel="noopener">Swagger UI</a>
-                <a [href]="openApiUrl(service)" target="_blank" rel="noopener">OpenAPI</a>
-                <a [href]="healthUrl(service)" target="_blank" rel="noopener">Health</a>
-            </div>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Platform</span>
+            <h1 class="page-title">Services &amp; API</h1>
+            <p class="page-sub">Live health status, OpenAPI specs and Swagger UI for every microservice.</p>
         </div>
-    }
+        <div class="page-actions">
+            <button type="button" class="btn btn-secondary" (click)="refresh()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh status
+            </button>
+        </div>
+    </header>
+
+    <div class="service-grid">
+        @for (service of services(); track service.port) {
+            <article class="service-card">
+                <div class="service-head">
+                    <span class="service-icon"><app-icon name="server" [size]="18" /></span>
+                    <span [class]="service.status | statusTone">{{ service.status }}</span>
+                </div>
+                <h2 class="service-name">{{ service.name }}</h2>
+                <p class="service-desc">{{ service.desc }}</p>
+                <p class="service-port mono">localhost:{{ service.port }}</p>
+                <div class="service-links">
+                    <a class="btn btn-secondary btn-sm" [href]="swaggerUrl(service)" target="_blank" rel="noopener">
+                        Swagger UI
+                    </a>
+                    <a class="btn btn-secondary btn-sm" [href]="openApiUrl(service)" target="_blank" rel="noopener">
+                        OpenAPI
+                    </a>
+                    <a class="btn btn-ghost btn-sm" [href]="healthUrl(service)" target="_blank" rel="noopener">
+                        <app-icon name="external" [size]="14" />
+                        Health
+                    </a>
+                </div>
+            </article>
+        }
+    </div>
 </div>

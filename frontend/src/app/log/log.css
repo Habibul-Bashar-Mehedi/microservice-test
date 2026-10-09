@@ -1,10 +1,32 @@
-table td pre {
-    max-width: 320px;
-    overflow-x: auto;
-    margin: 0;
-    font-size: 0.8rem;
+.filter-select {
+    width: auto;
+    height: 34px;
+    min-width: 130px;
 }
 
-label {
-    margin-right: 1rem;
+.payload-cell summary {
+    cursor: pointer;
+    color: var(--c-primary);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    list-style: none;
+}
+
+.payload-cell summary::-webkit-details-marker {
+    display: none;
+}
+
+.payload-cell summary::before {
+    content: '▸';
+    margin-right: 4px;
+    display: inline-block;
+    transition: transform var(--t-fast);
+}
+
+.payload-cell[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.payload-cell .payload {
+    margin-top: var(--sp-2);
 }

@@ -1,42 +1,83 @@
-<h1>My Orders</h1>
-<button type="button" (click)="loadOrders()">Refresh</button>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Shop</span>
+            <h1 class="page-title">My Orders</h1>
+            <p class="page-sub">Track the status of the orders you have placed.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="btn btn-secondary" (click)="loadOrders()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh
+            </button>
+        </div>
+    </header>
 
-@if (orders().length === 0) {
-    <p>You have no orders yet.</p>
-} @else {
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Status</th>
-            <th>Product Updated</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (o of filteredOrders(); track o.id) {
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (orders().length === 0) {
+        <div class="empty">
+            <app-icon name="orders" [size]="34" />
+            <p class="empty-title">No orders yet</p>
+            <p class="empty-text">You haven't placed any orders. Head to the dashboard to start shopping.</p>
+            <a class="btn" routerLink="/dashboard">Browse products</a>
+        </div>
+    } @else {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
                 <tr>
-                    <td>{{ o.id }}</td>
-                    <td>{{ productName(o.productId) ?? o.productId }}</td>
-                    <td>{{ o.quantity }}</td>
-                    <td>{{ o.status }}</td>
-                    <td>{{ o.productUpdated }}</td>
-                    <td>
-                        @if (canCancel(o.status)) {
-                            <button
-                                type="button"
-                                (click)="cancelOrder(o)"
-                                [disabled]="cancelling()"
-                            >Cancel</button>
-                        } @else if (o.status === 'CONFIRMED') {
-                            <span>Confirmed</span>
-                        }
-                    </td>
+                    <th class="col-id">Order</th>
+                    <th>Product</th>
+                    <th class="num">Quantity</th>
+                    <th>Status</th>
+                    <th>Product Updated</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+                </thead>
+                <tbody>
+                    @for (o of filteredOrders(); track o.id) {
+                        <tr>
+                            <td class="col-id">#{{ o.id }}</td>
+                            <td class="cell-strong">{{ productName(o.productId) ?? ('Product ' + o.productId) }}</td>
+                            <td class="num">{{ o.quantity }}</td>
+                            <td>
+                                <span [class]="o.status | statusTone">{{ o.status | prettyStatus }}</span>
+                            </td>
+                            <td>
+                                @if (o.productUpdated) {
+                                    <span class="badge badge-success badge-plain">Yes</span>
+                                } @else {
+                                    <span class="muted">No</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    @if (canCancel(o.status)) {
+                                        <button
+                                            type="button"
+                                            class="btn btn-secondary btn-sm"
+                                            (click)="cancelOrder(o)"
+                                            [disabled]="cancelling()"
+                                        >
+                                            Cancel
+                                        </button>
+                                    } @else if (o.status === 'CONFIRMED') {
+                                        <span class="muted text-sm">Confirmed</span>
+                                    } @else {
+                                        <span class="muted text-sm">—</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

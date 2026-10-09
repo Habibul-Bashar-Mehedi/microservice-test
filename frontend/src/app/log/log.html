@@ -1,67 +1,114 @@
-<h1>Message Logs</h1>
-<p>Kafka messages and their log data, stored in <code>log-db</code>. Admin only.</p>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Audit</span>
+            <h1 class="page-title">Message Logs</h1>
+            <p class="page-sub">Kafka publish/consume activity stored in <span class="mono">log-db</span>. Admin only.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="btn btn-secondary" (click)="load()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh
+            </button>
+            <button type="button" class="btn btn-danger" (click)="clearAll()" [disabled]="clearing()">
+                <app-icon name="trash" [size]="16" />
+                Clear All Logs
+            </button>
+        </div>
+    </header>
 
-<button type="button" (click)="load()">Refresh</button>
-<button type="button" (click)="clearAll()" [disabled]="clearing()">Clear All Logs</button>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
 
-<label>Service
-    <select [(ngModel)]="serviceFilter" name="service">
-        <option value="all">All</option>
-        <option value="auth-service">auth-service</option>
-        <option value="user-service">user-service</option>
-        <option value="order-service">order-service</option>
-        <option value="product-service">product-service</option>
-        <option value="log-service">log-service</option>
-    </select>
-</label>
-<label>Direction
-    <select [(ngModel)]="directionFilter" name="direction">
-        <option value="all">All</option>
-        <option value="PUBLISHED">Published</option>
-        <option value="CONSUMED">Consumed</option>
-    </select>
-</label>
-<label>Status
-    <select [(ngModel)]="statusFilter" name="status">
-        <option value="all">All</option>
-        <option value="SUCCESS">Success</option>
-        <option value="FAILED">Failed</option>
-    </select>
-</label>
+    <div class="toolbar">
+        <label class="field-inline">
+            Service
+            <select class="select filter-select" [(ngModel)]="serviceFilter" name="service">
+                <option value="all">All</option>
+                <option value="auth-service">auth-service</option>
+                <option value="user-service">user-service</option>
+                <option value="order-service">order-service</option>
+                <option value="product-service">product-service</option>
+                <option value="log-service">log-service</option>
+            </select>
+        </label>
+        <label class="field-inline">
+            Direction
+            <select class="select filter-select" [(ngModel)]="directionFilter" name="direction">
+                <option value="all">All</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="CONSUMED">Consumed</option>
+            </select>
+        </label>
+        <label class="field-inline">
+            Status
+            <select class="select filter-select" [(ngModel)]="statusFilter" name="status">
+                <option value="all">All</option>
+                <option value="SUCCESS">Success</option>
+                <option value="FAILED">Failed</option>
+            </select>
+        </label>
+        <span class="spacer"></span>
+        <span class="muted text-sm">{{ filteredLogs().length }} entr{{ filteredLogs().length === 1 ? 'y' : 'ies' }}</span>
+    </div>
 
-<h2>All Logs ({{ filteredLogs().length }})</h2>
-@if (filteredLogs().length === 0) {
-    <p>No log entries found.</p>
-} @else {
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Time</th>
-            <th>Service</th>
-            <th>Direction</th>
-            <th>Routing Key</th>
-            <th>Status</th>
-            <th>Email</th>
-            <th>Detail</th>
-            <th>Payload (JSON)</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (l of filteredLogs(); track l.id) {
+    @if (filteredLogs().length === 0) {
+        <div class="empty">
+            <app-icon name="logs" [size]="34" />
+            <p class="empty-title">No log entries</p>
+            <p class="empty-text">No messages match the current filters.</p>
+        </div>
+    } @else {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
                 <tr>
-                    <td>{{ l.id }}</td>
-                    <td>{{ l.createdAt }}</td>
-                    <td>{{ l.serviceName }}</td>
-                    <td>{{ l.direction }}</td>
-                    <td>{{ l.routingKey }}</td>
-                    <td>{{ l.status }}</td>
-                    <td>{{ l.email || '—' }}</td>
-                    <td>{{ l.detail }}</td>
-                    <td><pre>{{ l.payload }}</pre></td>
+                    <th class="col-id">ID</th>
+                    <th>Time</th>
+                    <th>Service</th>
+                    <th>Direction</th>
+                    <th>Routing Key</th>
+                    <th>Status</th>
+                    <th>Email</th>
+                    <th>Detail</th>
+                    <th>Payload</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+                </thead>
+                <tbody>
+                    @for (l of filteredLogs(); track l.id) {
+                        <tr>
+                            <td class="col-id">{{ l.id }}</td>
+                            <td class="mono">{{ l.createdAt }}</td>
+                            <td>{{ l.serviceName }}</td>
+                            <td>
+                                <span
+                                    class="badge"
+                                    [class.badge-info]="l.direction === 'PUBLISHED'"
+                                    [class.badge-neutral]="l.direction !== 'PUBLISHED'"
+                                >{{ l.direction }}</span>
+                            </td>
+                            <td class="mono">{{ l.routingKey }}</td>
+                            <td><span [class]="l.status | statusTone">{{ l.status }}</span></td>
+                            <td class="cell-muted">{{ l.email || '—' }}</td>
+                            <td class="cell-truncate" [title]="l.detail">{{ l.detail }}</td>
+                            <td>
+                                @if (l.payload) {
+                                    <details class="payload-cell">
+                                        <summary>View</summary>
+                                        <pre class="payload">{{ l.payload }}</pre>
+                                    </details>
+                                } @else {
+                                    <span class="muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

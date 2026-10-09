@@ -1,35 +1,66 @@
-<h1>Notifications</h1>
-<button type="button" (click)="load()">Refresh</button>
-<button type="button" (click)="markAllRead()">Mark all read</button>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Inbox</span>
+            <h1 class="page-title">Notifications</h1>
+            <p class="page-sub">Approval and rejection updates relevant to your role.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="btn btn-secondary" (click)="load()">
+                <app-icon name="refresh" [size]="16" />
+                Refresh
+            </button>
+            <button type="button" class="btn btn-secondary" (click)="markAllRead()">
+                <app-icon name="check" [size]="16" />
+                Mark all read
+            </button>
+        </div>
+    </header>
 
-@if (notifications().length === 0) {
-    <p>No notifications.</p>
-} @else {
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Message</th>
-            <th>Status</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (notifications().length === 0) {
+        <div class="empty">
+            <app-icon name="bell" [size]="34" />
+            <p class="empty-title">You're all caught up</p>
+            <p class="empty-text">There are no notifications right now.</p>
+        </div>
+    } @else {
+        <ul class="notif-list">
             @for (n of notifications(); track n.id) {
-                <tr>
-                    <td>{{ n.id }}</td>
-                    <td>{{ n.productName }}</td>
-                    <td [style.fontWeight]="n.read ? 'normal' : 'bold'">{{ n.message }}</td>
-                    <td>{{ n.read ? 'Read' : 'Unread' }}</td>
-                    <td>
-                        @if (!n.read) {
-                            <button type="button" (click)="markRead(n)">Mark read</button>
+                <li class="notif-item" [class.unread]="!n.read">
+                    <span class="notif-icon"><app-icon name="bell" [size]="18" /></span>
+                    <div class="notif-body">
+                        <div class="notif-top">
+                            <span class="notif-product">{{ n.productName }}</span>
+                            @if (!n.read) {
+                                <span class="badge badge-info badge-plain">Unread</span>
+                            } @else {
+                                <span class="badge badge-neutral badge-plain">Read</span>
+                            }
+                        </div>
+                        <p class="notif-message">{{ n.message }}</p>
+                        @if (n.createdAt) {
+                            <p class="notif-time">
+                                <app-icon name="clock" [size]="13" />
+                                {{ n.createdAt | date: 'medium' }}
+                            </p>
                         }
-                    </td>
-                </tr>
+                    </div>
+                    <div class="notif-action">
+                        @if (!n.read) {
+                            <button type="button" class="btn btn-secondary btn-sm" (click)="markRead(n)">
+                                Mark read
+                            </button>
+                        }
+                    </div>
+                </li>
             }
-        </tbody>
-    </table>
-}
+        </ul>
+    }
+</div>

@@ -1,59 +1,129 @@
-<h1>My Cart</h1>
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Shop</span>
+            <h1 class="page-title">My Cart</h1>
+            <p class="page-sub">Review your items, adjust quantities and check out the selection.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-secondary" routerLink="/dashboard">
+                <app-icon name="arrow-left" [size]="16" />
+                Continue shopping
+            </a>
+        </div>
+    </header>
 
-@if (cartItems().length === 0) {
-    <p>Your cart is empty.</p>
-} @else {
-    <table>
-        <thead>
-        <tr>
-            <th>
-                <label><input
-                    type="checkbox"
-                    [checked]="cart.isAllSelected()"
-                    (change)="cart.setAllSelected($any($event.target).checked)"
-                > All</label>
-            </th>
-            <th>Product</th>
-            <th>Price</th>
-            <th>Quantity</th>
-            <th>Subtotal</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (item of cartItems(); track item.productId) {
-                <tr>
-                    <td>
-                        <input
-                            type="checkbox"
-                            [checked]="item.selected"
-                            (change)="cart.toggleSelected(item.productId)"
-                        >
-                    </td>
-                    <td>{{ item.name }}</td>
-                    <td>{{ item.price }}</td>
-                    <td>
-                        <input
-                            type="number"
-                            min="1"
-                            [max]="item.availableQuantity"
-                            [value]="item.quantity"
-                            (change)="updateCartQuantity(item.productId, $event)"
-                        >
-                    </td>
-                    <td>{{ item.price * item.quantity }}</td>
-                    <td>
-                        <button type="button" (click)="removeFromCart(item.productId)">Remove</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    <p><strong>Selected Total: {{ selectedTotal() }}</strong></p>
-    <button
-        type="button"
-        (click)="checkout()"
-        [disabled]="checkingOut() || selectedCount() === 0"
-    >Checkout Selected</button>
-}
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (cartItems().length === 0) {
+        <div class="empty">
+            <app-icon name="cart" [size]="34" />
+            <p class="empty-title">Your cart is empty</p>
+            <p class="empty-text">Browse the catalog and add products to your cart to get started.</p>
+            <a class="btn" routerLink="/dashboard">Browse products</a>
+        </div>
+    } @else {
+        <div class="cart-layout">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title"><app-icon name="cart" /> Cart Items</h2>
+                    <span class="muted text-sm">{{ cartItems().length }} item(s)</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th class="col-select">
+                                <input
+                                    type="checkbox"
+                                    [checked]="cart.isAllSelected()"
+                                    (change)="cart.setAllSelected($any($event.target).checked)"
+                                    aria-label="Select all items"
+                                >
+                            </th>
+                            <th>Product</th>
+                            <th class="num">Price</th>
+                            <th class="num">Quantity</th>
+                            <th class="num">Subtotal</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            @for (item of cartItems(); track item.productId) {
+                                <tr>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            [checked]="item.selected"
+                                            (change)="cart.toggleSelected(item.productId)"
+                                            [attr.aria-label]="'Select ' + item.name"
+                                        >
+                                    </td>
+                                    <td class="cell-strong">{{ item.name }}</td>
+                                    <td class="num">{{ item.price }}</td>
+                                    <td class="num">
+                                        <input
+                                            class="input cart-qty"
+                                            type="number"
+                                            min="1"
+                                            [max]="item.availableQuantity"
+                                            [value]="item.quantity"
+                                            (change)="updateCartQuantity(item.productId, $event)"
+                                            aria-label="Quantity"
+                                        >
+                                    </td>
+                                    <td class="num">{{ item.price * item.quantity }}</td>
+                                    <td>
+                                        <div class="row-actions">
+                                            <button
+                                                type="button"
+                                                class="btn-icon sm"
+                                                title="Remove"
+                                                aria-label="Remove item"
+                                                (click)="removeFromCart(item.productId)"
+                                            >
+                                                <app-icon name="trash" [size]="16" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <aside class="card summary">
+                <h2 class="summary-title">Order Summary</h2>
+                <div class="summary-row">
+                    <span class="muted">Selected items</span>
+                    <span>{{ selectedCount() }}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>{{ selectedTotal() }}</span>
+                </div>
+                <button
+                    type="button"
+                    class="btn summary-btn"
+                    (click)="checkout()"
+                    [disabled]="checkingOut() || selectedCount() === 0"
+                >
+                    @if (checkingOut()) {
+                        <span class="spinner"></span>
+                        Placing orders...
+                    } @else {
+                        <app-icon name="check" [size]="16" />
+                        Checkout Selected
+                    }
+                </button>
+                <p class="summary-note">Each selected item becomes an order awaiting admin confirmation.</p>
+            </aside>
+        </div>
+    }
+</div>

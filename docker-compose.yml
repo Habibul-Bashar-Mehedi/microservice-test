@@ -23,7 +23,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       # Dual listeners: PLAINTEXT for the host (IntelliJ/local tools), INTERNAL for containers.
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://kafka:9093,INTERNAL://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
@@ -78,7 +78,7 @@ services:
     container_name: postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: lemon
       POSTGRES_PASSWORD: lemon
@@ -92,7 +92,7 @@ services:
       retries: 10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.5
     container_name: elasticsearch
     restart: unless-stopped
     ports:
@@ -169,6 +169,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product-service
       SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
       SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: kafka:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       consul:
         condition: service_healthy
@@ -194,6 +195,7 @@ services:
       <<: [*consul-env, *db-env]
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order-service
       SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: kafka:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       consul:
         condition: service_healthy

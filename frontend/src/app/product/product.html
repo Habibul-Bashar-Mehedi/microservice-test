@@ -1,205 +1,302 @@
-@if (feature === 'add') {
-    <h1>Add Product</h1>
-} @else if (feature === 'list') {
-    <h1>Product List</h1>
-} @else if (feature === 'pending') {
-    <h1>Pending Approvals</h1>
-} @else if (feature === 'stock') {
-    <h1>All Products</h1>
-}
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Catalog</span>
+            <h1 class="page-title">{{ title }}</h1>
+            <p class="page-sub">{{ subtitle }}</p>
+        </div>
+        <div class="page-actions">
+            @if (feature !== 'add') {
+                <button type="button" class="btn btn-secondary" (click)="load()">
+                    <app-icon name="refresh" [size]="16" />
+                    Refresh
+                </button>
+            }
+        </div>
+    </header>
 
-<p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
 
-@if (feature !== 'add') {
-    <div class="sort-bar">
-        <label>Sort
-            <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" name="product-sort">
-                <option value="">Default</option>
-                <option value="out-of-stock">Out of Stock</option>
-                <option value="low-stock">Low Stock (&lt; 10)</option>
-            </select>
-        </label>
-    </div>
-}
-
-@if (feature === 'add' && role === 'MAINTAINER') {
-    <form (ngSubmit)="create()">
-        <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
-        <label>Price <input type="number" name="price" step="0.01" min="0" [(ngModel)]="form.price" required></label>
-        <label>Available Quantity <input type="number" name="availableQuantity" min="0" [(ngModel)]="form.availableQuantity" required></label>
-        <label>Category
-            <select name="category" [(ngModel)]="form.category">
-                @for (c of categories; track c) {
-                    <option [value]="c">{{ c }}</option>
-                }
-            </select>
-        </label>
-        <button type="submit">Submit to Manager</button>
-    </form>
-}
-
-@if (feature === 'list') {
-    <button type="button" (click)="load()">Refresh</button>
-    <div class="table-scroll">
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Rejection Reason</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredList(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>
-                        @if (edits[p.id]) {
-                            <input type="text" [name]="'edit-name-' + p.id" [(ngModel)]="edits[p.id].name">
-                        } @else {
-                            {{ p.name }}
-                        }
-                    </td>
-                    <td>
-                        @if (edits[p.id]) {
-                            <input type="number" step="0.01" min="0" [name]="'edit-price-' + p.id" [(ngModel)]="edits[p.id].price">
-                        } @else {
-                            {{ p.price }}
-                        }
-                    </td>
-                    <td>
-                        @if (edits[p.id]) {
-                            <input type="number" min="0" [name]="'edit-qty-' + p.id" [(ngModel)]="edits[p.id].availableQuantity">
-                        } @else {
-                            {{ p.availableQuantity }}
-                        }
-                    </td>
-                    <td>
-                        @if (edits[p.id]) {
-                            <select [name]="'edit-category-' + p.id" [(ngModel)]="edits[p.id].category">
+    @if ((feature === 'add' || feature === 'list') && role === 'MAINTAINER') {
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <h2 class="panel-title"><app-icon name="plus" [size]="17" /> Create Product</h2>
+            </div>
+            <div class="panel-body">
+                <form (ngSubmit)="create()">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="new-name">Name <span class="req">*</span></label>
+                            <input id="new-name" class="input" type="text" name="name" [(ngModel)]="form.name" placeholder="e.g. Basmati Rice" required>
+                        </div>
+                        <div class="field">
+                            <label for="new-price">Price <span class="req">*</span></label>
+                            <input id="new-price" class="input" type="number" name="price" step="0.01" min="0" [(ngModel)]="form.price" placeholder="0.00" required>
+                        </div>
+                        <div class="field">
+                            <label for="new-qty">Available Quantity <span class="req">*</span></label>
+                            <input id="new-qty" class="input" type="number" name="availableQuantity" min="0" [(ngModel)]="form.availableQuantity" placeholder="0" required>
+                        </div>
+                        <div class="field">
+                            <label for="new-category">Category</label>
+                            <select id="new-category" class="select" name="category" [(ngModel)]="form.category">
                                 @for (c of categories; track c) {
                                     <option [value]="c">{{ c }}</option>
                                 }
                             </select>
-                        } @else {
-                            {{ p.category ?? 'OTHER' }}
-                        }
-                    </td>
-                    <td>{{ p.status }}</td>
-                    <td>{{ p.rejectionReason ?? '—' }}</td>
-                    <td>
-                        @if (p.status?.startsWith('REJECTED_BY') && isMine(p)) {
-                            @if (edits[p.id]) {
-                                <button type="button" (click)="resubmit(p)">Resubmit</button>
-                            } @else {
-                                <button type="button" (click)="startEdit(p)">Edit</button>
-                            }
-                        } @else if (p.status?.startsWith('REJECTED_BY')) {
-                            <span>Rejected</span>
-                        } @else {
-                            <span>In review</span>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    </div>
-}
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">
+                            <app-icon name="send" [size]="16" />
+                            Submit to Manager
+                        </button>
+                        <span class="form-note">The product enters the approval workflow at the Manager stage.</span>
+                    </div>
+                </form>
+            </div>
+        </section>
+    }
 
-@if (feature === 'pending') {
-    <button type="button" (click)="load()">Refresh</button>
-    <div class="table-scroll">
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-            <th>Maintainer</th>
-            <th>Manager</th>
-            <th>Specialist</th>
-            <th>Salesman</th>
-            <th>Status</th>
-            <th>Reason</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredPending(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.availableQuantity }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
-                    <td>{{ p.createdBy ?? '—' }}</td>
-                    <td>{{ p.managerReviewer ?? '—' }}</td>
-                    <td>{{ p.specialistReviewer ?? '—' }}</td>
-                    <td>{{ p.salesmanReviewer ?? '—' }}</td>
-                    <td>{{ p.status }}</td>
-                    <td>
-                        <input type="text" [name]="'reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Rejection reason">
-                    </td>
-                    <td>
-                        <button type="button" (click)="review(p, true)">Approve</button>
-                        <button type="button" (click)="review(p, false)">Reject</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    </div>
-}
+    @if (feature !== 'add') {
+        <div class="toolbar">
+            <label class="field-inline">
+                <app-icon name="filter" [size]="15" />
+                Sort
+                <select class="select product-sort" [ngModel]="sort()" (ngModelChange)="sort.set($event)" name="product-sort">
+                    <option value="">Quantity: high to low</option>
+                    <option value="out-of-stock">Out of stock</option>
+                    <option value="low-stock">Low stock (&lt; 10)</option>
+                </select>
+            </label>
+            <span class="spacer"></span>
+            <span class="muted text-sm">
+                {{ feature === 'pending' ? filteredPending().length : (feature === 'stock' ? filteredStock().length : filteredList().length) }}
+                product(s)
+            </span>
+        </div>
+    }
 
-@if (feature === 'stock' && role === 'ADMIN') {
-    <button type="button" (click)="load()">Refresh</button>
-    <div class="table-scroll">
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Available</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Add Stock</th>
-            <th>Update Price</th>
-            <th>Update Name</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (p of filteredStock(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.availableQuantity }}</td>
-                    <td>{{ p.category ?? 'OTHER' }}</td>
-                    <td>{{ p.status }}</td>
-                    <td>
-                        <input type="number" min="1" [name]="'add-stock-' + p.id" [(ngModel)]="amounts[p.id]" placeholder="Qty">
-                        <button type="button" (click)="addQuantity(p)">Add</button>
-                    </td>
-                    <td>
-                        <input type="number" min="0.01" step="0.01" [name]="'price-' + p.id" [(ngModel)]="prices[p.id]" placeholder="New price">
-                        <button type="button" (click)="updatePrice(p)">Update</button>
-                    </td>
-                    <td>
-                        <input type="text" [name]="'name-' + p.id" [(ngModel)]="names[p.id]" placeholder="New name">
-                        <button type="button" (click)="updateName(p)">Update</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    </div>
-}
+    @if (feature === 'list') {
+        @if (filteredList().length === 0) {
+            <div class="empty">
+                <app-icon name="products" [size]="34" />
+                <p class="empty-title">No products</p>
+                <p class="empty-text">There are no products to display for this view.</p>
+            </div>
+        } @else {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th class="col-id">ID</th>
+                        <th>Name</th>
+                        <th class="num">Price</th>
+                        <th class="num">Available</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Rejection Reason</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (p of filteredList(); track p.id) {
+                            <tr>
+                                <td class="col-id">{{ p.id }}</td>
+                                <td class="cell-strong">
+                                    @if (edits[p.id]) {
+                                        <input class="input" type="text" [name]="'edit-name-' + p.id" [(ngModel)]="edits[p.id].name">
+                                    } @else {
+                                        {{ p.name }}
+                                    }
+                                </td>
+                                <td class="num">
+                                    @if (edits[p.id]) {
+                                        <input class="input" type="number" step="0.01" min="0" [name]="'edit-price-' + p.id" [(ngModel)]="edits[p.id].price">
+                                    } @else {
+                                        {{ p.price }}
+                                    }
+                                </td>
+                                <td class="num">
+                                    @if (edits[p.id]) {
+                                        <input class="input" type="number" min="0" [name]="'edit-qty-' + p.id" [(ngModel)]="edits[p.id].availableQuantity">
+                                    } @else {
+                                        {{ p.availableQuantity }}
+                                    }
+                                </td>
+                                <td>
+                                    @if (edits[p.id]) {
+                                        <select class="select" [name]="'edit-category-' + p.id" [(ngModel)]="edits[p.id].category">
+                                            @for (c of categories; track c) {
+                                                <option [value]="c">{{ c }}</option>
+                                            }
+                                        </select>
+                                    } @else {
+                                        <span class="badge badge-neutral badge-plain">{{ p.category ?? 'OTHER' }}</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span [class]="p.status | statusTone">{{ p.status | prettyStatus }}</span>
+                                </td>
+                                <td class="cell-muted">{{ p.rejectionReason ?? '—' }}</td>
+                                <td>
+                                    <div class="row-actions">
+                                        @if (p.status?.startsWith('REJECTED_BY') && isMine(p)) {
+                                            @if (edits[p.id]) {
+                                                <button type="button" class="btn btn-sm" (click)="resubmit(p)">
+                                                    <app-icon name="check" [size]="15" />
+                                                    Resubmit
+                                                </button>
+                                            } @else {
+                                                <button type="button" class="btn btn-secondary btn-sm" (click)="startEdit(p)">
+                                                    <app-icon name="edit" [size]="15" />
+                                                    Edit
+                                                </button>
+                                            }
+                                        } @else if (p.status?.startsWith('REJECTED_BY')) {
+                                            <span class="muted text-sm">Rejected</span>
+                                        } @else {
+                                            <span class="muted text-sm">In review</span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    @if (feature === 'pending') {
+        @if (filteredPending().length === 0) {
+            <div class="empty">
+                <app-icon name="approvals" [size]="34" />
+                <p class="empty-title">Nothing awaiting review</p>
+                <p class="empty-text">There are no products pending at your approval stage right now.</p>
+            </div>
+        } @else {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th class="col-id">ID</th>
+                        <th>Name</th>
+                        <th class="num">Price</th>
+                        <th class="num">Available</th>
+                        <th>Category</th>
+                        <th>Maintainer</th>
+                        <th>Manager</th>
+                        <th>Specialist</th>
+                        <th>Salesman</th>
+                        <th>Status</th>
+                        <th>Rejection Reason</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (p of filteredPending(); track p.id) {
+                            <tr>
+                                <td class="col-id">{{ p.id }}</td>
+                                <td class="cell-strong">{{ p.name }}</td>
+                                <td class="num">{{ p.price }}</td>
+                                <td class="num">{{ p.availableQuantity }}</td>
+                                <td><span class="badge badge-neutral badge-plain">{{ p.category ?? 'OTHER' }}</span></td>
+                                <td class="cell-muted">{{ p.createdBy ?? '—' }}</td>
+                                <td class="cell-muted">{{ p.managerReviewer ?? '—' }}</td>
+                                <td class="cell-muted">{{ p.specialistReviewer ?? '—' }}</td>
+                                <td class="cell-muted">{{ p.salesmanReviewer ?? '—' }}</td>
+                                <td><span [class]="p.status | statusTone">{{ p.status | prettyStatus }}</span></td>
+                                <td>
+                                    <input class="input" type="text" [name]="'reason-' + p.id" [(ngModel)]="reasons[p.id]" placeholder="Reason if rejecting">
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button type="button" class="btn btn-sm" (click)="review(p, true)">
+                                            <app-icon name="check" [size]="15" />
+                                            Approve
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" (click)="review(p, false)">
+                                            <app-icon name="close" [size]="15" />
+                                            Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    @if (feature === 'stock' && role === 'ADMIN') {
+        @if (filteredStock().length === 0) {
+            <div class="empty">
+                <app-icon name="products" [size]="34" />
+                <p class="empty-title">No products</p>
+                <p class="empty-text">The catalog is empty.</p>
+            </div>
+        } @else {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th class="col-id">ID</th>
+                        <th>Name</th>
+                        <th class="num">Price</th>
+                        <th class="num">Available</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Add Stock</th>
+                        <th>Update Price</th>
+                        <th>Update Name</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (p of filteredStock(); track p.id) {
+                            <tr>
+                                <td class="col-id">{{ p.id }}</td>
+                                <td class="cell-strong">{{ p.name }}</td>
+                                <td class="num">{{ p.price }}</td>
+                                <td class="num">
+                                    <span
+                                        class="badge badge-plain"
+                                        [class.badge-danger]="p.availableQuantity === 0"
+                                        [class.badge-warning]="p.availableQuantity > 0 && p.availableQuantity < 10"
+                                        [class.badge-success]="p.availableQuantity >= 10"
+                                    >{{ p.availableQuantity }}</span>
+                                </td>
+                                <td><span class="badge badge-neutral badge-plain">{{ p.category ?? 'OTHER' }}</span></td>
+                                <td><span [class]="p.status | statusTone">{{ p.status | prettyStatus }}</span></td>
+                                <td>
+                                    <div class="row-actions">
+                                        <input class="input stock-input" type="number" min="1" [name]="'add-stock-' + p.id" [(ngModel)]="amounts[p.id]" placeholder="Qty">
+                                        <button type="button" class="btn btn-secondary btn-sm" (click)="addQuantity(p)">Add</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <input class="input stock-input" type="number" min="0.01" step="0.01" [name]="'price-' + p.id" [(ngModel)]="prices[p.id]" placeholder="New price">
+                                        <button type="button" class="btn btn-secondary btn-sm" (click)="updatePrice(p)">Update</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <input class="input stock-input" type="text" [name]="'name-' + p.id" [(ngModel)]="names[p.id]" placeholder="New name">
+                                        <button type="button" class="btn btn-secondary btn-sm" (click)="updateName(p)">Update</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

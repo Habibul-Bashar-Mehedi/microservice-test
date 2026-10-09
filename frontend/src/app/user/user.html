@@ -1,56 +1,129 @@
-@if (feature === 'create') {
-    <h1>Create User</h1>
-    <form (ngSubmit)="create()">
-        <label>Name <input type="text" name="name" [(ngModel)]="form.name" required></label>
-        <label>Email <input type="email" name="email" [(ngModel)]="form.email" required></label>
-        <button type="submit">Create User</button>
-    </form>
-    <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-}
-
-@if (feature === 'list') {
-    <h1>All Users</h1>
-    <button type="button" (click)="load()">Refresh</button>
-    <p class="message" [style.color]="isError() ? '#b00020' : '#0a7d32'">{{ message() }}</p>
-    <table>
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Active Status</th>
-            <th>Role</th>
-            <th>Change Role</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-            @for (u of filteredUsers(); track u.id) {
-                <tr>
-                    <td>{{ u.id }}</td>
-                    <td>{{ u.name }}</td>
-                    <td>{{ u.email }}</td>
-                    <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
-                    <td>{{ u.role }}</td>
-                    <td>
-                        <select [ngModel]="selectedRole[u.id] || u.role" (ngModelChange)="selectedRole[u.id] = $event" [name]="'role-' + u.id">
-                            @for (r of roles; track r) {
-                                <option [value]="r">{{ r }}</option>
-                            }
-                        </select>
-                        @if (selectedRole[u.id] && selectedRole[u.id] !== u.role) {
-                            <button type="button" (click)="changeRole(u, selectedRole[u.id])">Set Role</button>
-                        }
-                    </td>
-                    <td>
-                        @if (u.active) {
-                            <button type="button" (click)="setActive(u, false)">Deactivate</button>
-                        } @else {
-                            <button type="button" (click)="setActive(u, true)">Activate</button>
-                        }
-                    </td>
-                </tr>
+<div class="page">
+    <header class="page-header">
+        <div class="page-header-text">
+            <span class="eyebrow">Administration</span>
+            <h1 class="page-title">{{ feature === 'create' ? 'Create User' : 'All Users' }}</h1>
+            <p class="page-sub">
+                @if (feature === 'create') {
+                    Add a new user profile to the platform.
+                } @else {
+                    Manage user profiles, roles and activation status.
+                }
+            </p>
+        </div>
+        <div class="page-actions">
+            @if (feature === 'list') {
+                <button type="button" class="btn btn-secondary" (click)="load()">
+                    <app-icon name="refresh" [size]="16" />
+                    Refresh
+                </button>
             }
-        </tbody>
-    </table>
-}
+        </div>
+    </header>
+
+    @if (message()) {
+        <div class="alert" [class.alert-error]="isError()" [class.alert-success]="!isError()" role="status">
+            <app-icon [name]="isError() ? 'alert' : 'check-circle'" [size]="17" />
+            <span>{{ message() }}</span>
+        </div>
+    }
+
+    @if (feature === 'create' || (feature === 'list' && role === 'ADMIN')) {
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <h2 class="panel-title"><app-icon name="plus" [size]="17" /> Create User</h2>
+            </div>
+            <div class="panel-body">
+                <form (ngSubmit)="create()">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="user-name">Name <span class="req">*</span></label>
+                            <input id="user-name" class="input" type="text" name="name" [(ngModel)]="form.name" placeholder="Full name" required>
+                        </div>
+                        <div class="field">
+                            <label for="user-email">Email <span class="req">*</span></label>
+                            <input id="user-email" class="input" type="email" name="email" [(ngModel)]="form.email" placeholder="name@example.com" required>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">
+                            <app-icon name="plus" [size]="16" />
+                            Create User
+                        </button>
+                        <span class="form-note">The new user starts with the USER role.</span>
+                    </div>
+                </form>
+            </div>
+        </section>
+    }
+
+    @if (feature === 'list') {
+        @if (filteredUsers().length === 0) {
+            <div class="empty">
+                <app-icon name="users" [size]="34" />
+                <p class="empty-title">No users</p>
+                <p class="empty-text">There are no users matching the current view.</p>
+            </div>
+        } @else {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th class="col-id">ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                        <th>Change Role</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        @for (u of filteredUsers(); track u.id) {
+                            <tr>
+                                <td class="col-id">{{ u.id }}</td>
+                                <td class="cell-strong">{{ u.name }}</td>
+                                <td class="cell-muted">{{ u.email }}</td>
+                                <td>
+                                    <span [class]="(u.active ? 'ACTIVE' : 'INACTIVE') | statusTone">
+                                        {{ u.active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge badge-info badge-plain">{{ u.role }}</span></td>
+                                <td>
+                                    <div class="row-actions role-actions">
+                                        <select
+                                            class="select"
+                                            [ngModel]="selectedRole[u.id] || u.role"
+                                            (ngModelChange)="selectedRole[u.id] = $event"
+                                            [name]="'role-' + u.id"
+                                            aria-label="Select role"
+                                        >
+                                            @for (r of roles; track r) {
+                                                <option [value]="r">{{ r }}</option>
+                                            }
+                                        </select>
+                                        @if (selectedRole[u.id] && selectedRole[u.id] !== u.role) {
+                                            <button type="button" class="btn btn-sm" (click)="changeRole(u, selectedRole[u.id])">
+                                                Set Role
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        @if (u.active) {
+                                            <button type="button" class="btn btn-secondary btn-sm" (click)="setActive(u, false)">Deactivate</button>
+                                        } @else {
+                                            <button type="button" class="btn btn-secondary btn-sm" (click)="setActive(u, true)">Activate</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

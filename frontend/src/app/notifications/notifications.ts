@@ -1,13 +1,17 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
+import { IconComponent } from '../ui/icon';
 import { ProductNotification } from '../models';
 
 @Component({
     selector: 'app-notifications',
-    templateUrl: './notifications.html'
+    imports: [IconComponent, DatePipe],
+    templateUrl: './notifications.html',
+    styleUrl: './notifications.css'
 })
 export class NotificationsComponent implements OnInit {
 

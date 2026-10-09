@@ -8,11 +8,18 @@ import { API } from './api-config';
 import { AuthService } from './auth.service';
 import { ChatbotComponent } from './chat/chat';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
+import { IconComponent, IconName } from './ui/icon';
 import { MessageLog, Order, Product, User } from './models';
 
 interface NavItem {
     label: string;
     link: string;
+    icon: IconName;
+}
+
+interface NavGroup {
+    label: string;
+    items: NavItem[];
 }
 
 type SearchContext = 'products' | 'users' | 'orders' | 'logs';
@@ -29,7 +36,8 @@ function matches(lower: string, ...values: (string | number | null | undefined)[
 
 @Component({
     selector: 'app-root',
-    imports: [RouterLink, RouterLinkActive, RouterOutlet, FormsModule, ConfirmDialogComponent, ChatbotComponent],
+    imports: [RouterLink, RouterLinkActive, RouterOutlet, FormsModule, ConfirmDialogComponent,
+        ChatbotComponent, IconComponent],
     templateUrl: './app.html',
     styleUrl: './app.css'
 })
@@ -42,6 +50,8 @@ export class App {
 
     navSearch = '';
     accountOpen = signal(false);
+    sidebarCollapsed = signal(false);
+    mobileNavOpen = signal(false);
     suggestions = signal<SuggestionItem[]>([]);
     showSuggestions = signal(false);
     context = signal<SearchContext>('products');
@@ -61,6 +71,8 @@ export class App {
             this.navSearch = '';
             this.suggestions.set([]);
             this.showSuggestions.set(false);
+            this.accountOpen.set(false);
+            this.mobileNavOpen.set(false);
         });
     }
 
@@ -80,10 +92,26 @@ export class App {
         return this.auth.getUser()?.role ?? 'USER';
     }
 
+    get initials(): string {
+        const name = this.user?.name?.trim();
+        if (!name) {
+            return '?';
+        }
+        const parts = name.split(/\s+/);
+        if (parts.length === 1) {
+            return parts[0].slice(0, 2);
+        }
+        return (parts[0][0] + parts[parts.length - 1][0]);
+    }
+
     private static readonly STAFF_ROLES = ['ADMIN', 'MANAGER', 'MAINTAINER', 'PRODUCT_SPECIALIST', 'SALESMAN'];
 
-    get canAccessApiDocs(): boolean {
+    get isStaff(): boolean {
         return App.STAFF_ROLES.includes(this.role);
+    }
+
+    get canAccessApiDocs(): boolean {
+        return this.isStaff;
     }
 
     get searchPlaceholder(): string {
@@ -99,47 +127,81 @@ export class App {
         }
     }
 
-    get navItems(): NavItem[] {
+    get navGroups(): NavGroup[] {
         switch (this.role) {
             case 'MAINTAINER':
                 return [
-                    {label: 'Add Product', link: '/product/add'},
-                    {label: 'Product List', link: '/product/list'},
-                    {label: 'Notifications', link: '/notifications'},
-                    {label: 'Orders', link: '/order/list'}
+                    { label: 'Catalog', items: [{ label: 'Product List', link: '/product/list', icon: 'products' }] },
+                    { label: 'Operations', items: [{ label: 'Orders', link: '/order/list', icon: 'orders' }] },
+                    { label: 'Inbox', items: [{ label: 'Notifications', link: '/notifications', icon: 'bell' }] }
                 ];
             case 'MANAGER':
                 return [
-                    {label: 'Product List', link: '/product/list'},
-                    {label: 'Pending Approvals', link: '/product/pending'},
-                    {label: 'Orders', link: '/order/list'},
-                    {label: 'Notifications', link: '/notifications'}
+                    {
+                        label: 'Catalog',
+                        items: [
+                            { label: 'Product List', link: '/product/list', icon: 'products' },
+                            { label: 'Pending Approvals', link: '/product/pending', icon: 'approvals' }
+                        ]
+                    },
+                    { label: 'Operations', items: [{ label: 'Orders', link: '/order/list', icon: 'orders' }] },
+                    { label: 'Inbox', items: [{ label: 'Notifications', link: '/notifications', icon: 'bell' }] }
                 ];
             case 'PRODUCT_SPECIALIST':
             case 'SALESMAN':
                 return [
-                    {label: 'Product List', link: '/product/list'},
-                    {label: 'Pending Approvals', link: '/product/pending'},
-                    {label: 'Notifications', link: '/notifications'}
+                    {
+                        label: 'Catalog',
+                        items: [
+                            { label: 'Product List', link: '/product/list', icon: 'products' },
+                            { label: 'Pending Approvals', link: '/product/pending', icon: 'approvals' }
+                        ]
+                    },
+                    { label: 'Inbox', items: [{ label: 'Notifications', link: '/notifications', icon: 'bell' }] }
                 ];
             case 'ADMIN':
                 return [
-                    {label: 'Pending Approvals', link: '/product/pending'},
-                    {label: 'All Products', link: '/product/stock'},
-                    {label: 'Notifications', link: '/notifications'},
-                    {label: 'Orders', link: '/order/list'},
-                    {label: 'Create Order', link: '/order/create'},
-                    {label: 'Users', link: '/user/list'},
-                    {label: 'Create User', link: '/user/create'},
-                    {label: 'Logs', link: '/log'}
+                    {
+                        label: 'Catalog',
+                        items: [
+                            { label: 'Pending Approvals', link: '/product/pending', icon: 'approvals' },
+                            { label: 'All Products', link: '/product/stock', icon: 'products' }
+                        ]
+                    },
+                    { label: 'Operations', items: [{ label: 'Orders', link: '/order/list', icon: 'orders' }] },
+                    {
+                        label: 'Administration',
+                        items: [
+                            { label: 'Users', link: '/user/list', icon: 'users' },
+                            { label: 'Logs', link: '/log', icon: 'logs' }
+                        ]
+                    },
+                    { label: 'Inbox', items: [{ label: 'Notifications', link: '/notifications', icon: 'bell' }] }
                 ];
             default:
                 return [
-                    {label: 'Dashboard', link: '/dashboard'},
-                    {label: 'Cart', link: '/cart'},
-                    {label: 'My Orders', link: '/my-orders'}
+                    {
+                        label: 'Shop',
+                        items: [
+                            { label: 'Dashboard', link: '/dashboard', icon: 'dashboard' },
+                            { label: 'Cart', link: '/cart', icon: 'cart' },
+                            { label: 'My Orders', link: '/my-orders', icon: 'orders' }
+                        ]
+                    }
                 ];
         }
+    }
+
+    toggleSidebar() {
+        this.sidebarCollapsed.update(v => !v);
+    }
+
+    toggleMobileNav() {
+        this.mobileNavOpen.update(v => !v);
+    }
+
+    closeMobileNav() {
+        this.mobileNavOpen.set(false);
     }
 
     logout() {
@@ -168,6 +230,12 @@ export class App {
         }
 
         this.searchTimer = setTimeout(() => this.fetchSuggestions(q), 120);
+    }
+
+    clearSearch() {
+        this.navSearch = '';
+        this.suggestions.set([]);
+        this.showSuggestions.set(false);
     }
 
     private fetchSuggestions(q: string) {

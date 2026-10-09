@@ -234,6 +234,7 @@ The aggregated HTML report is written to
 
 | Document | Description |
 |---|---|
+| `application-description.md` | What the application does: capabilities, roles, pages and their features |
 | `architecture-flow.md` | System architecture and core activity flows |
 | `authentication-flow.md` | Authentication overview |
 | `auth-service-flow.md` | Auth service internals |

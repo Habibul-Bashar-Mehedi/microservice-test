@@ -1,14 +1,19 @@
-.table-scroll {
-    overflow-x: auto;
-    max-width: 100%;
+.product-sort {
+    width: auto;
+    height: 34px;
 }
 
-.table-scroll table {
-    table-layout: auto;
-    width: 100%;
+.stock-input {
+    width: 92px;
+    min-width: 72px;
 }
 
-td input,
-td select {
-    max-width: 100%;
+.data-table .row-actions {
+    flex-wrap: nowrap;
+}
+
+@media (max-width: 720px) {
+    .stock-input {
+        width: 76px;
+    }
 }

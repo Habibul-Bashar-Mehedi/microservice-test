@@ -1,11 +1,13 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
+import { PrettyStatusPipe, StatusTonePipe } from '../ui/pipes';
 import { Order, Product } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
@@ -14,7 +16,9 @@ const API_VERSION_KEY = 'order-api-version';
 
 @Component({
     selector: 'app-my-orders',
-    templateUrl: './my-orders.html'
+    imports: [RouterLink, IconComponent, StatusTonePipe, PrettyStatusPipe],
+    templateUrl: './my-orders.html',
+    styleUrl: './my-orders.css'
 })
 export class MyOrdersComponent implements OnInit {
 

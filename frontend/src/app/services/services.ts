@@ -2,6 +2,9 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 
+import { IconComponent } from '../ui/icon';
+import { StatusTonePipe } from '../ui/pipes';
+
 interface ServiceInfo {
     name: string;
     port: number;
@@ -11,6 +14,7 @@ interface ServiceInfo {
 
 @Component({
     selector: 'app-services',
+    imports: [IconComponent, StatusTonePipe],
     templateUrl: './services.html',
     styleUrl: './services.css'
 })

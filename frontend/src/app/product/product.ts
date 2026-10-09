@@ -7,13 +7,15 @@ import { Title } from '@angular/platform-browser';
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
+import { PrettyStatusPipe, StatusTonePipe } from '../ui/pipes';
 import { Product } from '../models';
 
 type ProductFeature = 'add' | 'list' | 'pending' | 'stock';
 
 @Component({
     selector: 'app-product',
-    imports: [FormsModule],
+    imports: [FormsModule, IconComponent, StatusTonePipe, PrettyStatusPipe],
     templateUrl: './product.html',
     styleUrl: './product.css'
 })
@@ -21,7 +23,7 @@ export class ProductComponent implements OnInit {
 
     private http = inject(HttpClient);
     private route = inject(ActivatedRoute);
-    private title = inject(Title);
+    private titleService = inject(Title);
     private auth = inject(AuthService);
     private confirmDialog = inject(ConfirmService);
 
@@ -55,7 +57,7 @@ export class ProductComponent implements OnInit {
 
     ngOnInit() {
         this.feature = (this.route.snapshot.data['feature'] as ProductFeature) ?? 'list';
-        this.title.setTitle('Products - Microservice UI');
+        this.titleService.setTitle('Products - Microservice UI');
         this.route.queryParamMap.subscribe(params => this.filter.set((params.get('q') ?? '').trim().toLowerCase()));
         this.load();
     }
@@ -70,13 +72,47 @@ export class ProductComponent implements OnInit {
 
     private applyView(items: Product[]): Product[] {
         const filtered = this.applyFilter(items);
-        let result = filtered;
         if (this.sort() === 'out-of-stock') {
-            result = filtered.filter(p => p.availableQuantity === 0);
-        } else if (this.sort() === 'low-stock') {
-            result = filtered.filter(p => p.availableQuantity < 10);
+            return filtered
+                .filter(p => p.availableQuantity === 0)
+                .sort((a, b) => a.availableQuantity - b.availableQuantity
+                    || (a.name ?? '').localeCompare(b.name ?? ''));
         }
-        return [...result].sort((a, b) => b.id - a.id);
+        if (this.sort() === 'low-stock') {
+            return filtered
+                .filter(p => p.availableQuantity < 10)
+                .sort((a, b) => a.availableQuantity - b.availableQuantity
+                    || (a.name ?? '').localeCompare(b.name ?? ''));
+        }
+        // Default ordering is by available quantity (not by id), then by name.
+        return [...filtered].sort((a, b) => b.availableQuantity - a.availableQuantity
+            || (a.name ?? '').localeCompare(b.name ?? ''));
+    }
+
+    get title(): string {
+        switch (this.feature) {
+            case 'add':
+                return 'Add Product';
+            case 'pending':
+                return 'Pending Approvals';
+            case 'stock':
+                return 'All Products';
+            default:
+                return 'Product List';
+        }
+    }
+
+    get subtitle(): string {
+        switch (this.feature) {
+            case 'add':
+                return 'Create a product and send it to the manager for review.';
+            case 'pending':
+                return 'Review products awaiting your stage of the approval workflow.';
+            case 'stock':
+                return 'Manage stock, pricing and names for the full catalog.';
+            default:
+                return 'Create new products and manage items in the approval pipeline.';
+        }
     }
 
     load() {
@@ -140,6 +176,9 @@ export class ProductComponent implements OnInit {
                 this.message.set('Product created and sent to the manager for review.');
                 this.isError.set(false);
                 this.form = {name: '', price: null, availableQuantity: null, category: 'OTHER'};
+                if (this.feature === 'list') {
+                    this.load();
+                }
             },
             error: (err) => this.fail(err)
         });

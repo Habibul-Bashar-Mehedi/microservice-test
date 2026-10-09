@@ -7,6 +7,8 @@ import { Title } from '@angular/platform-browser';
 import { API } from '../api-config';
 import { AuthService } from '../auth.service';
 import { ConfirmService } from '../confirm-dialog/confirm.service';
+import { IconComponent } from '../ui/icon';
+import { PrettyStatusPipe, StatusTonePipe } from '../ui/pipes';
 import { Order } from '../models';
 
 type ApiVersion = 'v1' | 'v2' | 'v3';
@@ -17,7 +19,7 @@ const API_VERSION_KEY = 'order-api-version';
 
 @Component({
     selector: 'app-order',
-    imports: [FormsModule],
+    imports: [FormsModule, IconComponent, StatusTonePipe, PrettyStatusPipe],
     templateUrl: './order.html',
     styleUrl: './order.css'
 })
@@ -112,6 +114,9 @@ export class OrderComponent implements OnInit {
                 this.isError.set(false);
                 this.form = {userId: null, productId: null, quantity: null};
                 this.creating.set(false);
+                if (this.feature === 'list') {
+                    this.load();
+                }
             },
             error: (err) => {
                 this.creating.set(false);
